@@ -1,0 +1,2539 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slibo Lite - スライド作成アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=BIZ+UDGothic:wght@400;700&display=swap');
+        
+
+        html, body { height: 100%; }
+        :root { --main-color: #002d5e; --accent-color: #00b0ad; }
+        body { font-family: var(--app-font, 'Noto Sans JP', sans-serif); background-color: #f1f5f9; }
+
+
+        .preview-stage {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #e2e8f0;
+        }
+        .slide-preview-container {
+            width: 1280px;
+            height: 720px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: center center;
+            background: white;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            font-family: var(--slide-font, 'Noto Sans JP', sans-serif);
+        }
+        .slide-transition-inner { width:100%; height:100%; display:flex; flex-direction:column; }
+        .slide-fade-enter-active { transition: opacity 0.15s ease; }
+        .slide-fade-leave-active { transition: opacity 0.1s ease; }
+        .slide-fade-enter-from, .slide-fade-leave-to { opacity: 0; }
+        .editor-height { height: calc(100vh - 64px); }
+
+        .s-title { font-size: 42px; font-weight: 700; color: var(--main-color); border-left: 10px solid var(--accent-color); padding-left: 20px; margin-bottom: 30px; margin-top: 0; }
+        .s-content { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .s-item { font-size: 28px; margin-bottom: 15px; display: flex; align-items: center; color: #334155; }
+        .s-item span.num { color: var(--accent-color); font-weight: bold; margin-right: 20px; font-size: 40px; }
+
+
+
+        .layout-cover { justify-content: center; align-items: center; text-align: center; background: linear-gradient(135deg, var(--main-color) 0%, var(--accent-color) 100%); color: white; padding: 80px; }
+        .layout-cover .c-title { font-size: 72px; font-weight: 700; margin-bottom: 24px; line-height: 1.2; white-space: pre-wrap; }
+        .layout-cover .c-subtitle { font-size: 28px; opacity: 0.85; }
+
+        .layout-two-col .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; flex-grow: 1; }
+        .layout-two-col .col { background: #f8fafc; border-top: 6px solid var(--accent-color); padding: 24px; }
+        .layout-two-col .col h3 { font-size: 26px; font-weight: 700; color: var(--main-color); margin-bottom: 16px; }
+        .layout-two-col .col .ci { font-size: 20px; color: #334155; margin-bottom: 10px; padding-left: 18px; position: relative; }
+        .layout-two-col .col .ci::before { content: "\25A0"; color: var(--accent-color); position: absolute; left: 0; font-size: 14px; top: 4px; }
+
+        .layout-section { justify-content: center; align-items: flex-start; background: var(--main-color); color: white; padding: 100px; }
+        .layout-section .sec-no { font-size: 28px; color: var(--accent-color); font-weight: 700; letter-spacing: 4px; margin-bottom: 16px; }
+        .layout-section .sec-title { font-size: 64px; font-weight: 700; line-height: 1.2; white-space: pre-wrap; }
+        .layout-section .sec-bar { width: 120px; height: 6px; background: var(--accent-color); margin-top: 32px; }
+
+        /* 表レイアウト */
+        .layout-table { flex-grow: 1; display: flex; flex-direction: column; }
+        .layout-table table { width: 100%; border-collapse: collapse; }
+        .layout-table th { border: 1px solid #cbd5e1; padding: 12px; background: var(--main-color); color: white; font-size: 20px; text-align: left; }
+        .layout-table td { border: 1px solid #cbd5e1; padding: 10px; font-size: 18px; color: #334155; }
+
+        /* 画像ハンドル */
+        .slide-image-wrap { position: absolute; z-index: 20; }
+        .slide-image-wrap img { width: 100%; height: 100%; object-fit: contain; border-radius: 2px; pointer-events: none; }
+        .slide-image-wrap .resize-handle {
+            position: absolute; width: 14px; height: 14px;
+            background: var(--accent-color); border: 2px solid white;
+            border-radius: 2px; z-index: 25;
+        }
+        .slide-image-wrap .resize-handle.nw { top: -7px; left: -7px; cursor: nw-resize; }
+        .slide-image-wrap .resize-handle.ne { top: -7px; right: -7px; cursor: ne-resize; }
+        .slide-image-wrap .resize-handle.sw { bottom: -7px; left: -7px; cursor: sw-resize; }
+        .slide-image-wrap .resize-handle.se { bottom: -7px; right: -7px; cursor: se-resize; }
+
+        #splitter { flex-shrink: 0; transition: background 0.15s; position: relative; }
+        /* vertical mode: preview on top, editor on bottom */
+        .flex-col > .app-editor { order: 3; }
+        .flex-col > .app-preview-area { order: 1; }
+        .flex-col > #splitter { order: 2; }
+        #splitter.layout-horizontal {
+            width: 6px; cursor: col-resize; background: #e2e8f0;
+            border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1;
+        }
+        #splitter.layout-vertical {
+            height: 6px; cursor: row-resize; background: #e2e8f0;
+            border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;
+        }
+        #splitter.layout-horizontal:hover, #splitter.layout-horizontal.dragging { background: #14b8a6; }
+        #splitter.layout-vertical:hover, #splitter.layout-vertical.dragging { background: #14b8a6; }
+        #splitter.layout-horizontal::after {
+            content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 2px; height: 32px; background: #94a3b8; border-radius: 1px;
+            box-shadow: 4px 0 0 #94a3b8, -4px 0 0 #94a3b8;
+        }
+        #splitter.layout-vertical::after {
+            content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            height: 2px; width: 32px; background: #94a3b8; border-radius: 1px;
+            box-shadow: 0 4px 0 #94a3b8, 0 -4px 0 #94a3b8;
+        }
+        body.dragging-splitter { cursor: col-resize; user-select: none; }
+        body.dragging-splitter-vertical { cursor: row-resize; user-select: none; }
+        .slide-footer { position:absolute; bottom:24px; left:24px; right:24px; display:grid; grid-template-columns:1fr auto 1fr; font-size:14px; color:#94a3b8; pointer-events:none; }
+        .slide-footer .sf-c { text-align:center; }
+        .slide-footer .sf-r { text-align:right; }
+
+        /* ナンバリング */
+        .layout-numbered-list .s-item { font-size: 28px; margin-bottom: 18px; display: flex; align-items: center; color: #334155; }
+        .layout-numbered-list .s-item span.num-lg { color: var(--accent-color); font-weight: bold; margin-right: 40px; font-size: 56px; width: 60px; text-align: center; line-height: 1; font-family: 'BIZ UDゴシック', 'Courier New', monospace; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+        /* 中央テキスト */
+        .layout-centered { justify-content: center; align-items: center; text-align: center; flex-grow: 1; display: flex; flex-direction: column; }
+        .layout-centered .c-body { font-size: 48px; color: var(--main-color); font-weight: 700; line-height: 1.4; max-width: 900px; }
+        .layout-centered .c-sub { font-size: 24px; color: #64748b; margin-top: 24px; }
+
+        /* クロージング */
+        .layout-closing { justify-content: center; align-items: center; text-align: center; flex-grow: 1; display: flex; flex-direction: column; background: linear-gradient(135deg, var(--main-color) 0%, #1a1a2e 100%); color: white; padding: 60px 80px; }
+        .layout-closing .cl-body { font-size: 64px; font-weight: 700; margin-bottom: 16px; }
+        .layout-closing .cl-sub { font-size: 28px; opacity: 0.85; margin-bottom: 32px; }
+        .layout-closing .cl-contact { font-size: 20px; opacity: 0.7; margin-bottom: 6px; }
+
+        /* アジェンダ */
+        .layout-agenda { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+        .layout-agenda .ag-item { display: flex; gap: 16px; align-items: center; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+        .layout-agenda .ag-item:last-child { border-bottom: none; }
+        .layout-agenda .ag-time { font-size: 20px; font-weight: 700; color: var(--accent-color); min-width: 80px; }
+        .layout-agenda .ag-topic { font-size: 22px; color: #334155; }
+
+        .overall-thumb-inner { width: 100%; aspect-ratio: 16/9; background: white; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .thumb-scale { transform: scale(0.18); transform-origin: center center; }
+
+        /* モバイル対応 */
+        @media (max-width: 768px) {
+            .desktop-only { display: none !important; }
+            .mobile-only { display: flex !important; }
+            #splitter { display: none !important; }
+            .editor-height { height: calc(100vh - 60px); }
+            .app-editor { flex: 1 1 auto !important; height: auto !important; }
+            header { flex-wrap: nowrap; gap: 4px; padding: 6px 8px !important; }
+            header h1 { font-size: 1rem; }
+            header .header-tools { flex-wrap: wrap; gap: 2px; }
+            header .header-tools > * { font-size: 10px; }
+            .sidebar-overlay {
+                position: fixed; inset: 0; z-index: 40;
+                background: rgba(0,0,0,0.5);
+            }
+            .sidebar-panel {
+                position: fixed; left: 0; top: 0; bottom: 0;
+                width: 280px; z-index: 41;
+                transform: translateX(-100%);
+                transition: transform 0.25s ease;
+            }
+            .sidebar-panel.open { transform: translateX(0); }
+            .sidebar-panel .slide-item { min-height: 48px; }
+            .mobile-preview-compact { flex: none !important; max-height: 35vh; }
+            .mobile-preview-compact .preview-stage { flex: none !important; min-height: auto; height: calc(35vh - 32px); }
+            .app-editor .editor-content { padding-bottom: 120px; }
+            .mobile-hamburger-dd {
+                position: fixed; top: 50px; right: 8px; left: 8px; z-index: 100;
+                background: var(--ui-wrap-bg, #1e293b);
+                border: 1px solid var(--ui-sidebar-border, #334155);
+                border-radius: 12px;
+                box-shadow: 0 18px 44px rgba(0,0,0,.4);
+                padding: 10px;
+                display: flex; flex-direction: column; gap: 6px;
+                max-height: calc(100vh - 64px); overflow-y: auto;
+            }
+            .hamburger-dd-btn {
+                display: flex; align-items: center; gap: 10px;
+                width: 100%; padding: 12px; border: none; border-radius: 8px;
+                background: transparent; color: var(--ui-btn-text, #e2e8f0);
+                font-size: 14px; text-align: left; cursor: pointer;
+                transition: background .15s;
+            }
+            .hamburger-dd-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+            .hamburger-dd-btn:not(:disabled):hover { background: var(--ui-btn-hover, #334155); }
+            .hamburger-dd-btn i { width: 18px; height: 18px; flex: none; }
+            .preview-stage { min-height: 40vh; }
+            .preview-label { display: none; }
+            .mobile-edge-handle {
+                display: flex; align-items: center; justify-content: center;
+                position: fixed; left: 0; top: 50%; transform: translateY(-50%);
+                width: 8px; height: 56px; border: none;
+                border-radius: 0 11px 11px 0;
+                background: var(--ui-accent, #14b8a6);
+                color: var(--ui-accent-text, #fff);
+                font-size: 13px; font-weight: 700; z-index: 880;
+                box-shadow: 0 4px 14px rgba(0,0,0,.28);
+                opacity: .9; cursor: pointer; padding: 0;
+            }
+            body.drawer-open .mobile-edge-handle { opacity: 0; pointer-events: none; }
+        }
+        @media (min-width: 769px) {
+            .mobile-only { display: none !important; }
+        }
+        @media (max-width: 1100px) and (min-width: 769px) {
+            header {
+                flex-wrap: wrap;
+                height: auto;
+                padding: 6px 10px !important;
+                gap: 2px;
+            }
+            header h1 { font-size: 0.95rem; }
+            .header-tools {
+                width: 100%;
+                display: grid;
+                grid-template-columns: auto auto;
+                justify-content: center;
+                gap: 4px 8px;
+            }
+            .header-tools > * { font-size: 11px; }
+            .header-wrap { padding: 2px 6px !important; }
+            .header-btn { padding: 3px 8px !important; }
+        }
+
+        /* === UI Theme System === */
+        :root {
+            --ui-header-bg: #0f172a;
+            --ui-header-text: #ffffff;
+            --ui-sidebar-bg: #1e293b;
+            --ui-sidebar-border: #334155;
+            --ui-editor-bg: #ffffff;
+            --ui-preview-bg: #e2e8f0;
+            --ui-accent: #14b8a6;
+            --ui-accent-hover: #0d9488;
+            --ui-btn-bg: #1e293b;
+            --ui-btn-hover: #334155;
+            --ui-btn-text: #ffffff;
+            --ui-wrap-bg: #1e293b;
+            --ui-label-text: #94a3b8;
+            --ui-icon-color: #2dd4bf;
+            --ui-input-bg: #334155;
+            --ui-input-text: #ffffff;
+        }
+        .app-header { background: var(--ui-header-bg) !important; color: var(--ui-header-text) !important; }
+        .app-sidebar { background: var(--ui-sidebar-bg) !important; }
+        .app-sidebar-border { border-color: var(--ui-sidebar-border) !important; }
+        .app-editor { background: var(--ui-editor-bg) !important; }
+        .app-preview-area { background: var(--ui-preview-bg) !important; }
+        .btn-accent { background: var(--ui-accent) !important; color: var(--ui-accent-text) !important; }
+        .btn-accent:hover { background: var(--ui-accent-hover) !important; }
+        .ui-accent-icon { color: var(--ui-accent) !important; }
+        .header-btn { background: var(--ui-btn-bg) !important; color: var(--ui-btn-text) !important; }
+        .header-btn:hover { background: var(--ui-btn-hover) !important; }
+        .header-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .header-wrap { background: var(--ui-wrap-bg) !important; }
+        .header-label { color: var(--ui-label-text) !important; }
+        .header-icon { color: var(--ui-icon-color) !important; }
+        .header-input { background: var(--ui-input-bg) !important; color: var(--ui-input-text) !important; }
+        .layout-btn { background:color-mix(in srgb, var(--ui-accent) 12%, #fff); color:var(--ui-accent); border-color:color-mix(in srgb, var(--ui-accent) 35%, #fff); }
+        .layout-btn-active { background:color-mix(in srgb, var(--ui-accent) 25%, #fff); color:color-mix(in srgb, var(--ui-accent) 65%, #000); border-color:var(--ui-accent); }
+        .header-dd { position:absolute; top:100%; right:0; margin-top:6px; background:var(--ui-wrap-bg); border:1px solid var(--ui-sidebar-border); border-radius:10px; padding:6px; box-shadow:0 12px 30px rgba(0,0,0,0.35); z-index:60; min-width:170px; }
+        .header-dd-item { display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:12px; color:var(--ui-btn-text); background:transparent; border:none; width:100%; text-align:left; transition:background .15s; }
+        .header-dd-item:hover { background:var(--ui-btn-hover); }
+        .design-panel { width:360px; padding:18px; }
+        .tutorial-highlight { z-index:1001; outline:3px solid #14b8a6; outline-offset:3px; border-radius:8px; }
+        .tutorial-tooltip { position:fixed; z-index:1002; }
+        .preview-nav-btn {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            z-index: 5; width: 36px; height: 80px; display: flex;
+            align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.25); color: #fff; border: none;
+            cursor: pointer; opacity: 0; transition: opacity 0.2s, background 0.2s;
+            font-size: 18px; backdrop-filter: blur(2px);
+        }
+        .preview-stage:hover .preview-nav-btn { opacity: 1; }
+        .preview-nav-btn:hover { background: rgba(0,0,0,0.5); }
+        .preview-nav-btn:disabled { opacity: 0 !important; cursor: default; }
+        .preview-nav-btn.prev { left: max(0px, calc(50% - 682px)); border-radius: 8px; }
+        .preview-nav-btn.next { right: max(0px, calc(50% - 682px)); border-radius: 8px; }
+        @media (max-width: 768px) {
+            .preview-nav-btn { opacity: 1; width: 28px; height: 60px; font-size: 14px; background: rgba(0,0,0,0.15); }
+        }
+        @media (min-width: 769px) {
+            .preview-nav-btn { display: none; }
+        }
+        .editor-section .flex-1 { min-width: 0; }
+    </style>
+</head>
+<body class="h-screen overflow-hidden">
+<div id="app" class="flex flex-col h-full">
+    <header class="app-header px-4 py-2 flex justify-between items-center shadow-lg z-10">
+        <div class="flex items-center gap-2">
+            <i data-lucide="presentation" class="header-icon"></i>
+            <h1 class="text-xl font-bold tracking-tight">Slibo Lite </h1>
+            <a href="https://note.com/keima_tech" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-stone-400 px-2 py-0.5 rounded-full cursor-pointer hover:text-teal-600 transition desktop-only">Developed by keima_tech</a>
+        </div>
+        <div class="flex gap-3 items-center header-tools">
+            <!-- Undo/Redo -->
+            <div class="flex gap-1 desktop-only">
+                <button @click="undo" :disabled="historyStack.length === 0" title="元に戻す"
+                    class="flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition">
+                    <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
+                </button>
+                <button @click="redo" :disabled="redoStack.length === 0" title="やり直す"
+                    class="flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition">
+                    <i data-lucide="redo-2" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+            <!-- デッキ切替 -->
+            <div class="flex gap-1 desktop-only">
+                <button @click="loadSampleDeck" class="flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" title="サンプルデッキに切り替え">
+                    <i data-lucide="book-open" class="w-3.5 h-3.5"></i> サンプル
+                </button>
+                <button @click="loadEmptyDeck" class="flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" title="空の新規デッキに切り替え">
+                    <i data-lucide="file-plus" class="w-3.5 h-3.5"></i> 新規
+                </button>
+            </div>
+            <!-- フォント -->
+            <div class="flex items-center gap-2 header-wrap px-3 py-1.5 rounded-lg desktop-only">
+                <i data-lucide="type" class="w-4 h-4 header-icon"></i>
+                <label class="text-xs header-label">フォント</label>
+                <select v-model="globalFont" class="header-input text-sm rounded px-2 py-1 outline-none">
+                    <option v-for="f in fontOptions" :key="f.value" :value="f.value">{{ f.label }}</option>
+                </select>
+            </div>
+            <!-- カラーテーマ -->
+            <div class="flex items-center gap-1 header-wrap px-2 py-1.5 rounded-lg desktop-only">
+                <i data-lucide="swatch-book" class="w-3.5 h-3.5 header-icon shrink-0"></i>
+                <label class="text-xs header-label shrink-0">テーマ</label>
+                <select v-model="currentColorTheme" @change="onColorThemeChange"
+                    class="header-input text-xs rounded px-1.5 py-1 outline-none max-w-[110px]">
+                    <option v-for="(t, i) in colorThemes" :key="i" :value="i">{{ t.name }}</option>
+                </select>
+            </div>
+            <!-- AIでつくる -->
+            <button @click="aiModalOpen = !aiModalOpen" class="flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" title="AIでつくる" style="background:rgba(0,176,173,0.15);">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5" style="color:#00b0ad;"></i> AIでつくる
+            </button>
+            <!-- 使い方ガイド -->
+            <button @click="showWelcome" class="desktop-only flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" title="使い方ガイドを表示">
+                <i data-lucide="help-circle" class="w-3.5 h-3.5 ui-accent-icon"></i> 使い方
+            </button>
+            <!-- 配置方向 -->
+            <button @click="toggleOrientation" class="desktop-only flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" :title="layoutOrientation === 'horizontal' ? '上下に分割' : '左右に分割'">
+                <i :data-lucide="layoutOrientation === 'horizontal' ? 'rows-2' : 'columns-2'" class="w-3.5 h-3.5 ui-accent-icon"></i>
+                <span class="hidden sm:inline">{{ layoutOrientation === 'horizontal' ? '上下' : '左右' }}</span>
+            </button>
+            <!-- 設定 -->
+            <button @click="settingsOpen = !settingsOpen" class="desktop-only flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" title="設定">
+                <i data-lucide="settings" class="w-3.5 h-3.5 ui-accent-icon"></i> 設定
+            </button>
+            <!-- 出力 -->
+            <div :ref="el => exportRef = el" class="relative desktop-only">
+                <button @click="exportDropdownOpen = !exportDropdownOpen" class="btn-accent flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition" title="PPTXまたはHTMLで出力">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i> 出力
+                </button>
+                <div v-if="exportDropdownOpen" class="header-dd">
+                    <button @click="exportPPTX(); exportDropdownOpen = false" class="header-dd-item" title="PowerPoint形式(.pptx)で保存">
+                        <span class="w-3.5 h-3.5 flex items-center justify-center">📊</span> PPTXで出力
+                    </button>
+                    <button @click="exportHTML(); exportDropdownOpen = false" class="header-dd-item" title="HTML形式で保存（ブラウザ表示用）">
+                        <span class="w-3.5 h-3.5 flex items-center justify-center">🌐</span> HTMLで出力
+                    </button>
+                </div>
+            </div>
+            <!-- モバイル出力ボタン -->
+            <div :ref="el => mobileExportRef = el" class="relative mobile-only">
+                <button @click="mobileExportOpen = !mobileExportOpen" class="p-2 header-btn rounded-lg" title="出力">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                </button>
+                <div v-if="mobileExportOpen" class="mobile-hamburger-dd" style="max-width:180px;right:0;left:auto;">
+                    <button @click="exportPPTX(); mobileExportOpen = false" class="hamburger-dd-btn"><span class="w-5 h-5 flex items-center justify-center text-base">📊</span> PPTXで出力</button>
+                    <button @click="exportHTML(); mobileExportOpen = false" class="hamburger-dd-btn"><span class="w-5 h-5 flex items-center justify-center text-base">🌐</span> HTMLで出力</button>
+                </div>
+            </div>
+            <!-- モバイルメニュー -->
+            <div :ref="el => hamburgerRef = el" class="relative mobile-only">
+                <button @click="hamburgerOpen = !hamburgerOpen" class="p-2 header-btn rounded-lg" title="メニューを開く">
+                    <i data-lucide="menu" class="w-5 h-5"></i>
+                </button>
+                <div v-if="hamburgerOpen" class="mobile-hamburger-dd">
+                    <div class="flex items-center gap-2 header-wrap px-3 py-1.5 rounded-lg">
+                        <i data-lucide="type" class="w-4 h-4 header-icon"></i>
+                        <label class="text-xs header-label">フォント</label>
+                        <select v-model="globalFont" class="header-input text-sm rounded px-2 py-1 outline-none">
+                            <option v-for="f in fontOptions" :key="f.value" :value="f.value">{{ f.label }}</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-1 header-wrap px-2 py-1.5 rounded-lg">
+                        <i data-lucide="swatch-book" class="w-3.5 h-3.5 header-icon shrink-0"></i>
+                        <label class="text-xs header-label shrink-0">テーマ</label>
+                        <select v-model="currentColorTheme" @change="onColorThemeChange" class="header-input text-xs rounded px-1.5 py-1 outline-none">
+                            <option v-for="(t, i) in colorThemes" :key="i" :value="i">{{ t.name }}</option>
+                        </select>
+                    </div>
+                    <button @click="undo(); hamburgerOpen=false" :disabled="historyStack.length === 0" class="hamburger-dd-btn"><i data-lucide="undo-2" class="w-4 h-4"></i> 元に戻す</button>
+                    <button @click="redo(); hamburgerOpen=false" :disabled="redoStack.length === 0" class="hamburger-dd-btn"><i data-lucide="redo-2" class="w-4 h-4"></i> やり直す</button>
+                    <button @click="loadSampleDeck(); hamburgerOpen=false" class="hamburger-dd-btn"><i data-lucide="book-open" class="w-4 h-4"></i> サンプル</button>
+                    <button @click="loadEmptyDeck(); hamburgerOpen=false" class="hamburger-dd-btn"><i data-lucide="file-plus" class="w-4 h-4"></i> 新規</button>
+                    <button @click="showWelcome(); hamburgerOpen=false" class="hamburger-dd-btn"><i data-lucide="help-circle" class="w-4 h-4"></i> 使い方ガイド</button>
+                    <button @click="settingsOpen = !settingsOpen; hamburgerOpen=false" class="hamburger-dd-btn"><i data-lucide="settings" class="w-4 h-4"></i> 設定</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex flex-1 overflow-hidden">
+        <!-- 左: スライド一覧 -->
+        <div :class="[
+            'app-sidebar border-r app-sidebar-border flex flex-col flex-shrink-0',
+            !isMobile ? 'desktop-only' : '',
+            isMobile ? 'sidebar-panel' : '',
+            isMobile && mobileSidebarOpen ? 'open' : '',
+        ]" style="width:260px;min-width:200px">
+            <div v-if="isMobile" class="flex items-center p-2 border-b border-slate-700 gap-2">
+                <button @click="overallPreviewOpen = !overallPreviewOpen; mobileSidebarOpen = false" class="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-teal-700 hover:bg-teal-600 text-white rounded-md text-xs transition" title="全体プレビュー">
+                    <i data-lucide="layout-dashboard" class="w-3 h-3"></i> 全体プレビュー
+                </button>
+                <button @click="mobileSidebarOpen = false" class="p-1 text-slate-400 hover:text-white shrink-0" title="閉じる">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="p-3 border-b border-slate-700 space-y-2">
+                <button @click="overallPreviewOpen = !overallPreviewOpen" class="w-full py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-md text-xs flex items-center justify-center gap-1 transition desktop-only" title="全体プレビュー">
+                    <i data-lucide="layout-dashboard" class="w-3 h-3"></i> 全体プレビュー
+                </button>
+                <!-- テンプレート -->
+                <details class="group">
+                    <summary class="cursor-pointer text-xs text-slate-400 hover:text-white flex items-center gap-1">
+                        <i data-lucide="layout-template" class="w-3 h-3"></i> テンプレート
+                    </summary>
+                    <div class="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                        <button v-for="tpl in slideTemplates" :key="tpl.name"
+                                @click="applyTemplate(tpl)"
+                                class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 rounded flex items-center gap-2 transition">
+                            <i :data-lucide="tpl.icon" class="w-3 h-3 shrink-0"></i>
+                            <span class="truncate">{{ tpl.name }}</span>
+                        </button>
+                    </div>
+                </details>
+            </div>
+            <div class="flex-1 overflow-y-auto p-1.5 space-y-1">
+                <div v-for="(slide, index) in slides"
+                     :key="index"
+                     draggable="true"
+                     @dragstart="onDragStart(index, $event)"
+                  @dragover.prevent="onDragOver"
+                     @drop="onDrop(index)"
+                     @dragend="onDragEnd"
+                     @click="changeSlide(index)"
+                     :class="['slide-item p-2 rounded-lg cursor-pointer text-sm transition group', currentSlideIndex === index ? 'bg-teal-900/50 border border-teal-500 text-white' : 'text-slate-400 hover:bg-slate-700']">
+                     <div class="flex justify-between items-center">
+                        <span :key="'si-'+slide.layout" class="flex items-center gap-2 min-w-0">
+                            <i :data-lucide="layoutIcon(slide.layout)" class="w-4 h-4 shrink-0 text-teal-400"></i>
+                            <span class="truncate">Slide {{ index + 1 }}</span>
+                        </span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-teal-900/60 text-teal-300 shrink-0 ml-1 font-medium">{{ layoutLabel(slide.layout) }}</span>
+                        <div class="flex gap-1 shrink-0">
+                            <button v-if="index > 0" @click.stop="moveSlide(index, index - 1)" class="opacity-0 group-hover:opacity-100 hover:text-slate-300 transition-opacity" title="上に移動">
+                                <i data-lucide="chevron-up" class="w-3 h-3"></i>
+                            </button>
+                            <button v-if="index < slides.length - 1" @click.stop="moveSlide(index, index + 1)" class="opacity-0 group-hover:opacity-100 hover:text-slate-300 transition-opacity" title="下に移動">
+                                <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                            </button>
+                            <button @click.stop="duplicateSlide(index)" class="opacity-0 group-hover:opacity-100 hover:text-blue-400 transition-opacity" title="複製">
+                                <i data-lucide="copy" class="w-3 h-3"></i>
+                            </button>
+                            <button v-if="slides.length > 1" @click.stop="deleteSlide(index)" class="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity" title="削除">
+                                <i data-lucide="trash-2" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="truncate mt-1 text-xs opacity-70">{{ slideHeadline(slide) || '\uFF08\u7121\u984C\u306E\u30B9\u30E9\u30A4\u30C9\uFF09' }}</div>
+                </div>
+            </div>
+            <div class="p-2 border-t border-slate-700">
+                <button @click="addSlide" id="add-slide-btn" class="w-full py-2 btn-accent rounded-md text-sm flex items-center justify-center gap-2" title="新しいスライドを末尾に追加">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> スライド追加
+                </button>
+            </div>
+        </div>
+
+        <!-- モバイルサイドバーオーバーレイ -->
+        <div v-if="isMobile && mobileSidebarOpen" @click="mobileSidebarOpen = false" class="sidebar-overlay"></div>
+
+        <!-- コンテナラッパー（エディタ＋スプリッター＋プレビュー） -->
+        <div :class="['flex min-w-0 min-h-0 flex-1', layoutOrientation === 'vertical' || isMobile ? 'flex-col' : '']">
+        <!-- 中央: 編集パネル -->
+        <div ref="editorPane"
+             :style="isMobile ? {} : (layoutOrientation === 'vertical' ? { height: editorHeight + 'px' } : { width: editorWidth + 'px' })"
+             :class="['app-editor overflow-y-auto editor-height flex-shrink-0', isMobile ? 'w-full' : '']">
+             <div class="p-4 sm:p-6 editor-content">
+            <div v-if="currentSlide">
+                <h2 class="text-lg font-bold mb-4 text-slate-800 flex items-center gap-2 desktop-only">
+                    <i data-lucide="edit-3" class="w-5 h-5 text-teal-600"></i> スライド内容の編集
+                </h2>
+
+                <div class="mb-4">
+                    <button @click="layoutCollapsed = !layoutCollapsed"
+                            class="w-full flex items-center justify-between px-4 py-3 rounded-lg transition font-medium"
+                            :class="layoutCollapsed ? 'layout-btn' : 'layout-btn-active'"
+                            title="スライドのレイアウトパターンを選択">
+                        <span class="flex items-center gap-2">
+                            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                            レイアウトパターン
+                        </span>
+                        <span class="flex items-center gap-2">
+                            <span class="text-xs font-normal opacity-70">{{ currentSlide.layout ? (layoutOptions.find(o=>o.value===currentSlide.layout)?.label||'') : '' }}</span>
+                            <i :data-lucide="layoutCollapsed ? 'chevron-down' : 'chevron-up'" class="w-5 h-5"></i>
+                        </span>
+                    </button>
+                    <div v-show="!layoutCollapsed" class="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="grid grid-cols-4 gap-2 layout-selector-grid">
+                            <button v-for="lo in layoutOptions" :key="lo.value"
+                                    @click="changeLayout(lo.value)"
+                                    :class="['flex flex-col items-center gap-1 p-2 rounded border text-xs transition',
+                                             currentSlide.layout === lo.value
+                                             ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm'
+                                             : 'border-slate-200 hover:border-slate-400 hover:bg-white text-slate-600']">
+                                <i :data-lucide="lo.icon" class="w-4 h-4"></i>
+                                <span class="leading-tight text-center">{{ lo.label }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-5 editor-section">
+                    <!-- カバー -->
+                    <template v-if="currentSlide.layout === 'cover'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">メインタイトル</label>
+                            <textarea v-model="currentSlide.title" @input="scheduleHistory" rows="2" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition resize-y" placeholder="例：2026年度 事業計画"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">サブタイトル</label>
+                            <input v-model="currentSlide.subtitle" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：IT推進部">
+                        </div>
+                    </template>
+
+                    <!-- 2カラム -->
+                    <template v-else-if="currentSlide.layout === 'two-column'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">スライドタイトル</label>
+                            <input v-model="currentSlide.title" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：強みと課題">
+                        </div>
+                        <div class="grid grid-cols-1 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">左カラム見出し</label>
+                                <input v-model="currentSlide.leftTitle" @input="scheduleHistory" type="text" class="w-full border border-slate-200 p-2 rounded text-sm" placeholder="例：強み">
+                                <div v-for="(it, i) in currentSlide.leftItems" :key="'l'+i" class="flex gap-1 mt-2">
+                                    <input v-model="currentSlide.leftItems[i]" @input="scheduleHistory" type="text" class="flex-1 min-w-0 border border-slate-200 p-2 rounded text-sm" :placeholder="'項目 '+(i+1)">
+                                    <button v-if="currentSlide.leftItems.length > 1" @click="removeItem(currentSlide.leftItems, i)" class="text-red-400 hover:text-red-600 shrink-0" title="この項目を削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                                </div>
+                                <button @click="addItem(currentSlide.leftItems, '')" class="text-xs text-teal-600 hover:text-teal-800 mt-1 flex items-center gap-1">
+                                    <i data-lucide="plus" class="w-3 h-3"></i> 追加
+                                </button>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">右カラム見出し</label>
+                                <input v-model="currentSlide.rightTitle" @input="scheduleHistory" type="text" class="w-full border border-slate-200 p-2 rounded text-sm" placeholder="例：課題">
+                                <div v-for="(it, i) in currentSlide.rightItems" :key="'r'+i" class="flex gap-1 mt-2">
+                                    <input v-model="currentSlide.rightItems[i]" @input="scheduleHistory" type="text" class="flex-1 min-w-0 border border-slate-200 p-2 rounded text-sm" :placeholder="'項目 '+(i+1)">
+                                    <button v-if="currentSlide.rightItems.length > 1" @click="removeItem(currentSlide.rightItems, i)" class="text-red-400 hover:text-red-600 shrink-0" title="この項目を削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                                </div>
+                                <button @click="addItem(currentSlide.rightItems, '')" class="text-xs text-teal-600 hover:text-teal-800 mt-1 flex items-center gap-1">
+                                    <i data-lucide="plus" class="w-3 h-3"></i> 追加
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- セクション -->
+                    <template v-else-if="currentSlide.layout === 'section'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">セクション番号 / ラベル</label>
+                            <input v-model="currentSlide.subtitle" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：SECTION 02">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">セクションタイトル</label>
+                            <textarea v-model="currentSlide.title" @input="scheduleHistory" rows="2" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition resize-y" placeholder="例：市場分析と機会"></textarea>
+                        </div>
+                    </template>
+
+                    <!-- 表 -->
+                    <template v-else-if="currentSlide.layout === 'table'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">スライドタイトル</label>
+                            <input v-model="currentSlide.title" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：業績比較">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-2">見出し行</label>
+                            <div class="flex flex-col gap-1.5">
+                                <input v-for="(h, i) in currentSlide.tableHeaders" :key="'th'+i"
+                                       v-model="currentSlide.tableHeaders[i]" @input="scheduleHistory"
+                                       type="text" class="w-full border border-slate-200 p-2 rounded text-sm" :placeholder="'見出し'+(i+1)">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-2">データ行</label>
+                            <div v-for="(row, ri) in currentSlide.tableRows" :key="'tr'+ri" class="flex items-center gap-2 mb-2">
+                                <div class="flex-1 flex flex-col gap-1.5">
+                                    <input v-for="(cell, ci) in row" :key="'tc'+ci"
+                                           v-model="currentSlide.tableRows[ri][ci]" @input="scheduleHistory"
+                                           type="text" class="w-full border border-slate-200 p-2 rounded text-sm" :placeholder="'行'+(ri+1)+'列'+(ci+1)">
+                                </div>
+                                <button v-if="currentSlide.tableRows.length > 1" @click="removeTableRow(ri)" class="text-red-400 hover:text-red-600 shrink-0 self-start" title="この行を削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                            </div>
+                            <button @click="addTableRow" class="text-xs text-teal-600 hover:text-teal-800 mt-1 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3 h-3"></i> 行を追加
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- ナンバリング -->
+                    <template v-else-if="currentSlide.layout === 'numbered-list'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">スライドタイトル</label>
+                            <input v-model="currentSlide.title" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：導入ステップ">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-2">ステップ</label>
+                            <div v-for="(item, i) in currentSlide.items" :key="i" class="flex gap-2 mb-2">
+                                <div class="bg-teal-100 flex items-center justify-center w-10 rounded text-teal-700 font-bold text-lg shrink-0">{{ i + 1 }}</div>
+                                <input v-model="currentSlide.items[i]" @input="scheduleHistory" type="text" class="flex-1 min-w-0 border border-slate-200 p-2 rounded focus:border-teal-500 outline-none transition" placeholder="ステップを入力">
+                                <button v-if="currentSlide.items.length > 1" @click="removeItem(currentSlide.items, i)" class="text-red-400 hover:text-red-600 shrink-0" title="この項目を削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                            </div>
+                            <button @click="addItem(currentSlide.items, '')" class="text-xs text-teal-600 hover:text-teal-800 mt-1 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3 h-3"></i> ステップを追加
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- 中央テキスト -->
+                    <template v-else-if="currentSlide.layout === 'centered'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">スライドタイトル</label>
+                            <input v-model="currentSlide.title" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：メッセージ">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">強調テキスト（大）</label>
+                            <textarea v-model="currentSlide.body" @input="scheduleHistory" rows="3" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition text-xl font-bold" placeholder="例：変革は、今ここから。"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">補足テキスト</label>
+                            <input v-model="currentSlide.subtitle" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：2026年度 経営方針">
+                        </div>
+                    </template>
+
+                    <!-- クロージング -->
+                    <template v-else-if="currentSlide.layout === 'closing'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">スライドタイトル</label>
+                            <input v-model="currentSlide.title" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：ご挨拶">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">キーメッセージ</label>
+                            <textarea v-model="currentSlide.body" @input="scheduleHistory" rows="2" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition text-lg" placeholder="例：ご清聴ありがとうございました"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">サブタイトル</label>
+                            <input v-model="currentSlide.subtitle" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：IT推進部">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-2">補足項目</label>
+                            <div v-for="(it, i) in currentSlide.items" :key="'ci'+i" class="flex gap-2 mb-1">
+                                <input v-model="currentSlide.items[i]" @input="scheduleHistory" type="text" class="flex-1 min-w-0 border border-slate-200 p-2 rounded text-sm" :placeholder="'項目 '+(i+1)">
+                                <button v-if="currentSlide.items.length > 1" @click="removeItem(currentSlide.items, i)" class="text-red-400 hover:text-red-600 shrink-0" title="この項目を削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                            </div>
+                            <button @click="addItem(currentSlide.items, '')" class="text-xs text-teal-600 hover:text-teal-800 mt-1 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3 h-3"></i> 項目を追加
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- アジェンダ -->
+                    <template v-else-if="currentSlide.layout === 'agenda'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">スライドタイトル</label>
+                            <input v-model="currentSlide.title" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：本日のアジェンダ">
+                        </div>
+                        <div v-for="(e, i) in currentSlide.agEntries" :key="'ag'+i" class="border border-slate-200 rounded p-2 mb-2 relative">
+                            <button v-if="currentSlide.agEntries.length > 1" @click="removeItem(currentSlide.agEntries, i)" class="absolute top-1 right-1 text-red-400 hover:text-red-600" title="この項目を削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                            <input v-model="e.t" @input="scheduleHistory" type="text" class="w-full border border-slate-200 p-1.5 rounded text-xs mb-1.5" placeholder="時間/ラベル">
+                            <input v-model="e.tp" @input="scheduleHistory" type="text" class="w-full border border-slate-200 p-1.5 rounded text-xs" :placeholder="'詳細 '+(i+1)">
+                        </div>
+                        <button @click="addItem(currentSlide.agEntries, {t:'', tp:''})" class="text-xs text-teal-600 hover:text-teal-800 mt-1 flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3 h-3"></i> 項目を追加
+                        </button>
+                    </template>
+
+                </div>
+
+                <!-- 共通: 画像設定 -->
+                <div class="mt-6 pt-4 border-t border-slate-200">
+                    <h3 class="text-sm font-bold mb-3 text-slate-800 flex items-center gap-2">
+                        <i data-lucide="image" class="w-4 h-4 text-teal-600"></i> 画像（スライド内に配置）
+                    </h3>
+                    <button @click="triggerImageUpload" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded border border-slate-300 flex items-center gap-1" title="画像ファイルをスライドに追加">
+                        <i data-lucide="upload" class="w-3 h-3"></i> 画像を追加（5MB以下）
+                    </button>
+                    <input ref="imageInput" type="file" accept="image/*" class="hidden" @change="onImageSelected">
+                    <div v-if="currentSlide.images.length > 0" class="mt-3 space-y-3">
+                        <div v-for="(img, i) in currentSlide.images" :key="'img'+i"
+                             :class="['p-3 rounded border', selectedImageIndex === i ? 'border-teal-500 bg-teal-50' : 'bg-slate-50 border-slate-200']"
+                             @click="selectedImageIndex = i">
+                            <div class="relative">
+                                <img :src="img.dataUrl" class="w-full h-20 object-contain mb-1 rounded">
+                                <button @click.stop="removeImage(i)"
+                                        class="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition"
+                                        title="この画像を削除">
+                                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                            <div class="text-xs text-slate-500 mb-2">画像 {{ i + 1 }}</div>
+                            <div class="grid grid-cols-2 gap-1 text-xs">
+                                <div><label class="text-slate-400">X</label><input v-model.number="img.x" type="number" class="w-full border rounded p-1"></div>
+                                <div><label class="text-slate-400">Y</label><input v-model.number="img.y" type="number" class="w-full border rounded p-1"></div>
+                                <div><label class="text-slate-400">幅</label><input v-model.number="img.w" type="number" min="30" class="w-full border rounded p-1"></div>
+                                <div><label class="text-slate-400">高さ</label><input v-model.number="img.h" type="number" min="30" class="w-full border rounded p-1"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">プレビュー画面で画像をドラッグ移動・リサイズできます。</p>
+                </div>
+
+                <!-- スピーカーノート -->
+                <div class="mt-6 pt-4 border-t border-slate-200">
+                    <h3 class="text-sm font-bold mb-3 text-slate-800 flex items-center gap-2">
+                        <i data-lucide="messages-square" class="w-4 h-4 text-teal-600"></i> スピーカーノート（発表者用メモ）
+                    </h3>
+                    <textarea v-model="currentSlide.note" @input="scheduleHistory"
+                              class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition text-sm"
+                              rows="4" placeholder="このスライドの発表時に話す内容を入力してください。&#10;AIで作成した場合もここに反映されます。"></textarea>
+                </div>
+
+            </div>
+        </div>
+        </div>
+
+        <!-- スプリッター -->
+        <div id="splitter" :class="'layout-' + layoutOrientation" @mousedown="startDrag" @touchstart.prevent="startDragTouch" class="desktop-only"></div>
+
+        <!-- 右: プレビュー -->
+        <div :class="['flex-1 flex flex-col app-preview-area min-w-0', isMobile ? 'mobile-preview-compact' : '']">
+            <div class="flex flex-col min-h-0" :class="isMobile ? '' : 'flex-1'">
+            <div class="text-xs font-bold text-slate-400 uppercase tracking-widest py-3 text-center bg-slate-100 border-b shrink-0 preview-label">
+                リアルタイムプレビュー (16:9) — 領域に合わせて自動拡縮
+            </div>
+            <div ref="previewStage" class="preview-stage flex-1" @mousemove="onImageDragMove" @mouseup="stopImageDrag" @mouseleave="stopImageDrag"
+                 @touchmove.prevent="onTouchImageDragMove" @touchend="stopImageDrag"
+                 @wheel.prevent="onPreviewWheel">
+                <div ref="slideEl" class="slide-preview-container" id="preview-render">
+                    <Transition name="slide-fade" mode="out-in">
+                        <div :key="currentSlideIndex" class="slide-transition-inner">
+                    <!-- カバー -->
+                    <template v-if="currentSlide.layout === 'cover'">
+                        <div class="layout-cover" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+                            <div class="c-title">{{ currentSlide.title || 'メインタイトル' }}</div>
+                            <div class="c-subtitle">{{ currentSlide.subtitle || 'サブタイトル' }}</div>
+                        </div>
+                        
+                        <div v-if="footerShow" class="slide-footer">
+                            <div>{{ footerText(footer.left, currentSlideIndex) }}</div>
+                            <div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div>
+                            <div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div>
+                        </div>
+                    </template>
+
+                    <!-- 2カラム -->
+                    <template v-else-if="currentSlide.layout === 'two-column'">
+                        <div class="layout-two-col" style="width:100%;height:100%;display:flex;flex-direction:column;padding:60px 80px;">
+                            <h2 class="s-title">{{ currentSlide.title || 'タイトル' }}</h2>
+                            <div class="cols">
+                                <div class="col">
+                                    <h3>{{ currentSlide.leftTitle || '左見出し' }}</h3>
+                                    <div v-for="(it,i) in currentSlide.leftItems" :key="'pl'+i" v-show="it" class="ci">{{ it }}</div>
+                                </div>
+                                <div class="col">
+                                    <h3>{{ currentSlide.rightTitle || '右見出し' }}</h3>
+                                    <div v-for="(it,i) in currentSlide.rightItems" :key="'pr'+i" v-show="it" class="ci">{{ it }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div v-if="footerShow" class="slide-footer">
+                            <div>{{ footerText(footer.left, currentSlideIndex) }}</div>
+                            <div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div>
+                            <div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div>
+                        </div>
+                    </template>
+
+                    <!-- セクション -->
+                    <template v-else-if="currentSlide.layout === 'section'">
+                        <div class="layout-section" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;">
+                            <div class="sec-no">{{ currentSlide.subtitle || 'SECTION 01' }}</div>
+                            <div class="sec-title">{{ currentSlide.title || 'セクションタイトル' }}</div>
+                            <div class="sec-bar"></div>
+                        </div>
+                        
+                        <div v-if="footerShow" class="slide-footer">
+                            <div>{{ footerText(footer.left, currentSlideIndex) }}</div>
+                            <div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div>
+                            <div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div>
+                        </div>
+                    </template>
+
+                    <!-- 表 -->
+                    <template v-else-if="currentSlide.layout === 'table'">
+                        <div style="flex-grow:1;display:flex;flex-direction:column;padding:60px 80px;">
+                            <h2 class="s-title">{{ currentSlide.title || 'タイトル' }}</h2>
+                            <div class="layout-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th v-for="(h, i) in currentSlide.tableHeaders" :key="'th'+i">{{ h || '見出し' }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(row, ri) in currentSlide.tableRows" :key="'tr'+ri" :style="{ background: ri % 2 === 0 ? 'white' : '#f8fafc' }">
+                                            <td v-for="(cell, ci) in row" :key="'td'+ci">{{ cell }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div v-if="footerShow" class="slide-footer">
+                            <div>{{ footerText(footer.left, currentSlideIndex) }}</div>
+                            <div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div>
+                            <div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div>
+                        </div>
+                    </template>
+
+                    <!-- ナンバリング -->
+                    <template v-else-if="currentSlide.layout === 'numbered-list'">
+                        <div style="flex-grow:1;display:flex;flex-direction:column;padding:60px 80px;">
+                            <h2 class="s-title">{{ currentSlide.title || 'タイトル' }}</h2>
+                            <div class="s-content layout-numbered-list">
+                                <div v-for="(item, i) in currentSlide.items" :key="i" v-show="item !== ''" class="s-item">
+                                    <span class="num-lg">0{{ i + 1 }}</span> {{ item }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div v-if="footerShow" class="slide-footer"><div>{{ footerText(footer.left, currentSlideIndex) }}</div><div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div><div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div></div>
+                    </template>
+
+                    <!-- 中央テキスト -->
+                    <template v-else-if="currentSlide.layout === 'centered'">
+                        <div class="layout-centered" style="width:100%;flex-grow:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px 80px;">
+                            <div class="c-body">{{ currentSlide.body || 'テキストを入力' }}</div>
+                            <div class="c-sub">{{ currentSlide.subtitle || '' }}</div>
+                        </div>
+                        
+                        <div v-if="footerShow" class="slide-footer"><div>{{ footerText(footer.left, currentSlideIndex) }}</div><div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div><div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div></div>
+                    </template>
+
+                    <!-- クロージング -->
+                    <template v-else-if="currentSlide.layout === 'closing'">
+                        <div class="layout-closing" style="position:absolute;top:0;left:0;width:100%;height:100%;">
+                            <div class="cl-body">{{ currentSlide.body || 'ありがとうございました' }}</div>
+                            <div class="cl-sub">{{ currentSlide.subtitle || '' }}</div>
+                            <div v-for="(it, i) in currentSlide.items" :key="'ci'+i" v-show="it" class="cl-contact">{{ it }}</div>
+                        </div>
+                        
+                        <div v-if="footerShow" class="slide-footer">
+                            <div>{{ footerText(footer.left, currentSlideIndex) }}</div><div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div><div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div>
+                        </div>
+                    </template>
+
+                    <!-- アジェンダ -->
+                    <template v-else-if="currentSlide.layout === 'agenda'">
+                        <div style="flex-grow:1;display:flex;flex-direction:column;padding:60px 80px;">
+                            <h2 class="s-title">{{ currentSlide.title || 'アジェンダ' }}</h2>
+                            <div class="layout-agenda">
+                                <div v-for="(e, i) in currentSlide.agEntries" :key="'ag'+i" v-show="e.t || e.tp" class="ag-item">
+                                    <div class="ag-time">{{ e.t || '' }}</div>
+                                    <div class="ag-topic">{{ e.tp || '' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div v-if="footerShow" class="slide-footer"><div>{{ footerText(footer.left, currentSlideIndex) }}</div><div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div><div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div></div>
+                    </template>
+
+                        </div>
+                    </Transition>
+
+
+                    <!-- 画像オーバーレイ -->
+                    <div v-for="(img, i) in currentSlide.images" :key="'imgw'+i"
+                         class="slide-image-wrap"
+                         :style="{ left: img.x + 'px', top: img.y + 'px', width: img.w + 'px', height: img.h + 'px', cursor: selectedImageIndex === i ? 'move' : 'pointer', boxShadow: selectedImageIndex === i ? '0 0 0 2px var(--accent-color)' : 'none' }"
+                         @mousedown.stop="startImageDrag($event, i)"
+                         @touchstart.stop="startImageDragTouch($event, i)">
+                        <img :src="img.dataUrl">
+                        <template v-if="selectedImageIndex === i">
+                            <div class="resize-handle nw" @mousedown.stop="startResize($event, i, 'nw')" @touchstart.stop="startResizeTouch($event, i, 'nw')"></div>
+                            <div class="resize-handle ne" @mousedown.stop="startResize($event, i, 'ne')" @touchstart.stop="startResizeTouch($event, i, 'ne')"></div>
+                            <div class="resize-handle sw" @mousedown.stop="startResize($event, i, 'sw')" @touchstart.stop="startResizeTouch($event, i, 'sw')"></div>
+                            <div class="resize-handle se" @mousedown.stop="startResize($event, i, 'se')" @touchstart.stop="startResizeTouch($event, i, 'se')"></div>
+                            <button @mousedown.stop @click.stop="removeImage(i)"
+                                    class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition z-30"
+                                    title="この画像を削除">
+                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+                <button class="preview-nav-btn prev" @click="changeSlide(currentSlideIndex - 1)" :disabled="currentSlideIndex === 0" title="前のスライド">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                </button>
+                <button class="preview-nav-btn next" @click="changeSlide(currentSlideIndex + 1)" :disabled="currentSlideIndex >= slides.length - 1" title="次のスライド">
+                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+            </div>
+        </div>
+        </div>
+    </main>
+
+    <!-- モバイル: 左端エッジハンドル -->
+    <div v-if="isMobile" class="mobile-edge-handle" @click="mobileSidebarOpen = true"></div>
+
+    <!-- チュートリアル -->
+    <template v-if="tutorialStep > 0 && tutorialStep <= tutorialSteps.length">
+        <div style="position:fixed;inset:0;z-index:1000;pointer-events:none;">
+            <div :style="{ position:'absolute', top:0, left:0, right:0, height:holeRect.top+'px', background:'rgba(0,0,0,0.65)' }"></div>
+            <div :style="{ position:'absolute', bottom:0, left:0, right:0, height:(winSize.h - holeRect.bottom)+'px', background:'rgba(0,0,0,0.65)' }"></div>
+            <div :style="{ position:'absolute', top:holeRect.top+'px', left:0, width:holeRect.left+'px', height:(holeRect.bottom - holeRect.top)+'px', background:'rgba(0,0,0,0.65)' }"></div>
+            <div :style="{ position:'absolute', top:holeRect.top+'px', right:0, width:(winSize.w - holeRect.right)+'px', height:(holeRect.bottom - holeRect.top)+'px', background:'rgba(0,0,0,0.65)' }"></div>
+        </div>
+        <div class="tutorial-tooltip" :style="{ top:tooltipPos.top+'px', left:tooltipPos.left+'px' }">
+            <div class="bg-white rounded-xl p-5 shadow-2xl" style="width:300px;max-width:90vw;">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="bg-teal-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ tutorialStep }} / {{ tutorialSteps.length }}</span>
+                    <span class="text-slate-800 font-bold text-sm">使い方ガイド</span>
+                </div>
+                <p class="text-slate-600 text-sm leading-relaxed">{{ tutorialSteps[tutorialStep-1].text }}</p>
+                <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
+                    <button v-if="tutorialStep > 1" @click="prevTutorialStep" class="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition">前へ</button>
+                    <div v-else></div>
+                    <button @click="nextTutorialStep" class="text-sm font-bold px-4 py-1.5 rounded-lg transition" :class="tutorialStep === tutorialSteps.length ? 'bg-teal-600 text-white hover:bg-teal-500' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'">{{ tutorialStep === tutorialSteps.length ? '完了' : '次へ' }}</button>
+                </div>
+                <div class="text-center mt-2">
+                    <button @click="endTutorial" class="text-xs text-slate-400 hover:text-slate-600">スキップ</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- ウェルカム -->
+    <template v-if="tutorialWelcome">
+        <div class="fixed inset-0 z-[110] flex items-center justify-center bg-black/70" @click.self="dismissWelcome">
+            <div class="bg-white rounded-2xl p-8 shadow-2xl text-center" style="width:400px;max-width:90vw;">
+                <div class="flex items-center justify-center mx-auto mb-4 text-5xl">👏</div>
+                <h2 class="text-2xl font-bold text-slate-800 mb-3">Sliboへようこそ</h2>
+                <p class="text-slate-500 text-sm leading-relaxed mb-6">スライド作成アプリ「Slibo」はブラウザ上でプレゼンテーションを簡単に作成・編集できるツールです。<br>各機能の場所を案内する簡単なツアーを開始しますか？</p>
+                <button @click="startTutorial" class="w-full py-3 rounded-xl text-sm font-bold bg-teal-600 hover:bg-teal-500 text-white transition mb-2 flex items-center justify-center gap-2">
+                    <i data-lucide="help-circle" class="w-4 h-4"></i> 使い方ガイドを始める
+                </button>
+                <button @click="dismissWelcome" class="w-full py-2 rounded-xl text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition">とじる</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- 汎用モーダル（alert/confirm/prompt） -->
+    <template v-if="modalState">
+        <div class="fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+            <div class="bg-white rounded-2xl p-6 shadow-2xl text-center" style="width:380px;max-width:90vw;">
+                <div v-if="modalState.type === 'alert' && modalState.message.includes('コピー')" class="w-12 h-12 rounded-2xl bg-teal-100 flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="check" class="w-6 h-6 text-teal-600"></i>
+                </div>
+                <div v-else-if="modalState.type === 'confirm'" class="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="alert-triangle" class="w-6 h-6 text-amber-600"></i>
+                </div>
+                <p class="text-slate-800 text-sm leading-relaxed mb-5 whitespace-pre-line">{{ modalState.message }}</p>
+                <div v-if="modalState.type === 'prompt'" class="mb-4">
+                    <input v-model="modalState.value" @keydown.enter="closeModal(true)" type="text" class="w-full bg-slate-100 border border-slate-300 text-slate-800 p-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500" placeholder="テンプレート名">
+                </div>
+                <div class="flex gap-2">
+                    <button v-if="modalState.type !== 'alert'" @click="closeModal(false)" class="flex-1 py-2.5 rounded-xl text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition">キャンセル</button>
+                    <button @click="closeModal(true)" class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-teal-600 hover:bg-teal-500 text-white transition">{{ modalState.type === 'confirm' ? 'はい' : 'OK' }}</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- 設定モーダル -->
+    <div v-if="settingsOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="settingsOpen = false">
+        <div class="bg-slate-800 rounded-xl p-6" style="width:520px;max-width:90vw;max-height:85vh;overflow-y:auto;">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 ui-accent-icon"></i> 設定
+                </h2>
+                <button @click="settingsOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700 transition" title="設定を閉じる">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <!-- UIテーマ選択 -->
+            <div>
+                <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                    <i data-lucide="palette" class="w-4 h-4 ui-accent-icon"></i> UIカラーテーマ
+                </h3>
+                <p class="text-xs text-slate-400 mb-4">アプリ全体の配色パターンを選択できます。</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button v-for="(t, i) in uiThemes" :key="i"
+                            @click="currentUiTheme = i"
+                            :class="['p-4 rounded-xl border-2 text-left transition hover:scale-[1.02]', currentUiTheme === i ? 'border-teal-500' : 'border-slate-600 hover:border-slate-500']">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="w-7 h-7 rounded-lg" :style="{ background: t.bg }"></div>
+                            <div class="w-7 h-7 rounded-lg" :style="{ background: t.sbg, border: '1px solid ' + t.sbd }"></div>
+                            <div class="w-7 h-7 rounded-lg" :style="{ background: t.ac }"></div>
+                        </div>
+                        <div class="text-sm text-white font-medium">{{ t.name }}</div>
+                    </button>
+                </div>
+            </div>
+            <!-- フッター設定 -->
+            <div class="mt-6 pt-4 border-t border-slate-700">
+                <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                    <i data-lucide="rectangle" class="w-4 h-4 ui-accent-icon"></i> フッター設定
+                </h3>
+                <p class="text-xs text-slate-400 mb-3">全スライドに表示するフッターのテキストを設定します。</p>
+                <label class="flex items-center gap-2 text-sm text-slate-300 mb-3 cursor-pointer">
+                    <input type="checkbox" v-model="footerShow" class="w-4 h-4 rounded border-slate-600 bg-slate-700 text-teal-500 focus:ring-teal-500">
+                    フッターを表示する
+                </label>
+                <div class="space-y-2" v-if="footerShow">
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-0.5">左</label>
+                        <input v-model="footer.left" @input="scheduleHistory" type="text" class="w-full bg-slate-700 border border-slate-600 text-white p-2 rounded text-sm outline-none focus:ring-2 focus:ring-teal-500" placeholder="例: 2026/06/26">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-0.5">中央</label>
+                        <input v-model="footer.center" @input="scheduleHistory" type="text" class="w-full bg-slate-700 border border-slate-600 text-white p-2 rounded text-sm outline-none focus:ring-2 focus:ring-teal-500" placeholder="例: Confidential">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-0.5">右</label>
+                        <input v-model="footer.right" @input="scheduleHistory" type="text" class="w-full bg-slate-700 border border-slate-600 text-white p-2 rounded text-sm outline-none focus:ring-2 focus:ring-teal-500" placeholder="{page} / {total}">
+                    </div>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">{page}/{total} はページ番号/総ページ数に置換</p>
+            </div>
+            <!-- デフォルトレイアウト -->
+            <div class="mt-6 pt-4 border-t border-slate-700">
+                <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                    <i data-lucide="layout" class="w-4 h-4 ui-accent-icon"></i> デフォルトレイアウト
+                </h3>
+                <p class="text-xs text-slate-400 mb-3">新規デッキ作成時に使用する初期レイアウトを選択します。</p>
+                <select v-model="defaultLayout" class="w-full bg-slate-700 border border-slate-600 text-white p-2 rounded text-sm outline-none focus:ring-2 focus:ring-teal-500">
+                    <option v-for="lo in layoutOptions" :key="lo.value" :value="lo.value">{{ lo.label }}</option>
+                </select>
+            </div>
+            <!-- Undo/Redo 履歴数 -->
+            <div class="mt-6 pt-4 border-t border-slate-700">
+                <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                    <i data-lucide="undo-2" class="w-4 h-4 ui-accent-icon"></i> Undo/Redo 履歴数
+                </h3>
+                <p class="text-xs text-slate-400 mb-3">元に戻す/やり直しの最大履歴数を設定します（10〜30）。</p>
+                <input v-model.number="maxHistory" type="number" min="10" max="30" class="w-24 bg-slate-700 border border-slate-600 text-white p-2 rounded text-sm outline-none focus:ring-2 focus:ring-teal-500">
+            </div>
+            <!-- エディタ配置方向 -->
+            <div class="mt-6 pt-4 border-t border-slate-700">
+                <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                    <i data-lucide="columns-2" class="w-4 h-4 ui-accent-icon"></i> エディタ配置
+                </h3>
+                <p class="text-xs text-slate-400 mb-3">編集パネルとプレビューの配置方向を選択します。</p>
+                <div class="flex gap-3">
+                    <button @click="layoutOrientation = 'horizontal'"
+                            :class="['flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 text-sm font-medium transition', layoutOrientation === 'horizontal' ? 'border-teal-500 bg-teal-500/10 text-teal-300' : 'border-slate-600 text-slate-400 hover:border-slate-500']">
+                        <i data-lucide="columns-2" class="w-4 h-4"></i> 左右
+                    </button>
+                    <button @click="layoutOrientation = 'vertical'"
+                            :class="['flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 text-sm font-medium transition', layoutOrientation === 'vertical' ? 'border-teal-500 bg-teal-500/10 text-teal-300' : 'border-slate-600 text-slate-400 hover:border-slate-500']">
+                        <i data-lucide="rows-2" class="w-4 h-4"></i> 上下
+                    </button>
+                </div>
+            </div>
+            <div class="mt-6 pt-4 border-t border-slate-700 text-xs text-slate-500">
+                <p>※スライド内の色は、ヘッダーの「カラーテーマ」で変更できます。</p>
+            </div>
+        </div>
+    </div>
+    <!-- 全体プレビューモーダル -->
+    <div v-if="overallPreviewOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="overallPreviewOpen = false">
+        <div class="bg-slate-800 rounded-xl p-6" style="width:90vw;max-width:1200px;max-height:85vh;overflow-y:auto;">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5 ui-accent-icon"></i> 全体プレビュー
+                </h2>
+                <button @click="overallPreviewOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700 transition" title="閉じる">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="grid gap-4" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));">
+                <div v-for="(s, i) in slides" :key="i"
+                     @click="changeSlide(i); overallPreviewOpen = false"
+                     :class="['overall-thumb-wrap rounded-xl border-2 transition cursor-pointer', currentSlideIndex === i ? 'border-teal-500' : 'border-slate-600 hover:border-slate-500']">
+                    <div class="overall-thumb-inner rounded-lg overflow-hidden">
+                        <div v-html="renderSlideThumb(s, i)"></div>
+                    </div>
+                    <div class="text-center text-sm text-slate-300 py-2 font-medium">{{ i + 1 }}. {{ slideHeadline(s) || 'タイトル' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- AIでつくる モーダル -->
+    <div v-if="aiModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="aiModalOpen = false">
+        <div class="bg-slate-800 rounded-xl p-6" style="width:640px;max-width:90vw;max-height:85vh;overflow-y:auto;">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i data-lucide="sparkles" class="w-5 h-5" style="color:#00b0ad;"></i> AIでつくる
+                </h2>
+                <button @click="aiModalOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700 transition" title="閉じる">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <!-- プロンプトコピー（主役ボタン） -->
+            <div class="mb-4 p-4 bg-slate-900 rounded-xl border border-teal-700/40">
+                <p class="text-sm text-slate-300 mb-3">以下のボタンをクリックしてプロンプトをコピーし、ChatGPT / Gemini / Claude等に貼り付けて議事録やメモを添付して送信してください。</p>
+                <button @click="copyAIPrompt" class="w-full py-3 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-600/30" title="AI用プロンプトをクリップボードにコピー">
+                    <i data-lucide="copy" class="w-4 h-4"></i> プロンプトをコピー
+                </button>
+            </div>
+            <!-- ステップ説明 -->
+            <div class="text-sm text-slate-300 mb-4 space-y-1 bg-slate-900/50 rounded-lg p-3">
+                <p>1. 上記のプロンプトをコピーしてAIに送信</p>
+                <p>2. AIがスライド構成案を表形式で提示 → 内容を確認し「はい」と返信するとJSONを返します</p>
+                <p>3. 返ってきたJSONを下の入力欄に貼り付け「▶ 貼り付けて反映」でデッキ生成</p>
+            </div>
+            <!-- JSON入力 -->
+            <div class="mb-3">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="text-xs text-slate-400 font-medium">AIから返されたJSON</label>
+                    <div class="flex gap-1">
+                        <button @click="formatAIJSON" class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition flex items-center gap-1" title="JSONを整形/フォーマット"><span>🧹</span> 整形</button>
+                    </div>
+                </div>
+                <textarea v-model="aiJSONInput" rows="8" class="w-full bg-slate-900 border border-slate-600 text-green-300 p-3 rounded text-xs font-mono outline-none focus:ring-2 focus:ring-teal-500 resize-y" placeholder='ここにJSONを貼り付け'></textarea>
+            </div>
+            <button @click="applyAIDeck" :disabled="!aiJSONInput.trim()" class="w-full py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-1" :class="aiJSONInput.trim() ? 'bg-teal-600 hover:bg-teal-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'" title="JSONデータをスライドデッキに反映">
+                <i data-lucide="play" class="w-4 h-4"></i> 貼り付けて反映
+            </button>
+            <!-- プロンプト全文（折りたたみ） -->
+            <details class="mt-4">
+                <summary class="text-xs text-slate-400 cursor-pointer hover:text-slate-300 select-none">プロンプト全文確認</summary>
+                <div class="mt-2 p-3 bg-slate-900 rounded text-xs text-slate-400 font-mono whitespace-pre-wrap max-h-60 overflow-y-auto">{{ aiPromptText }}</div>
+            </details>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script>
+    const { createApp, ref, computed, onMounted, onUnmounted, nextTick, watch } = Vue;
+
+    createApp({
+        setup() {
+            const today = new Date();
+            const _pad = (n) => String(n).padStart(2, '0');
+            const defaultDate = today.getFullYear() + '/' + (today.getMonth()+1) + '/' + _pad(today.getDate());
+            const globalMainColor = ref('#002d5e');
+            const globalAccentColor = ref('#00b0ad');
+
+            const colorThemes = [
+                { name: 'コーポレート', main: '#002d5e', accent: '#00b0ad' },
+                { name: 'プレミアム',   main: '#1a1a2e', accent: '#e94560' },
+                { name: 'ナチュラル',   main: '#2d5016', accent: '#8bc34a' },
+
+            ];
+            const currentColorTheme = ref(0);
+            const applyColorTheme = (theme) => {
+                globalMainColor.value = theme.main;
+                globalAccentColor.value = theme.accent;
+            };
+            const onColorThemeChange = () => {
+                const t = colorThemes[currentColorTheme.value];
+                if (t) applyColorTheme(t);
+            };
+            // Sync theme selector when colors change manually
+            watch([globalMainColor, globalAccentColor], () => {
+                const idx = colorThemes.findIndex(t => t.main === globalMainColor.value && t.accent === globalAccentColor.value);
+                if (idx >= 0) currentColorTheme.value = idx;
+            });
+
+            // ===== UI Theme =====
+            const uiThemes = [
+                { name:'ダーク (標準)', bg:'#0f172a', txt:'#fff', sbg:'#1e293b', sbd:'#334155', ebg:'#fff', pbg:'#e2e8f0', ac:'#14b8a6', ach:'#0d9488', bt:'#1e293b', bth:'#334155', btx:'#fff', wr:'#1e293b', lb:'#94a3b8', ic:'#2dd4bf', ipbg:'#334155', iptx:'#fff' },
+                { name:'スモーキー',    bg:'#1c1917', txt:'#fff', sbg:'#292524', sbd:'#44403c', ebg:'#fafaf9', pbg:'#f5f5f4', ac:'#d97706', ach:'#b45309', bt:'#292524', bth:'#44403c', btx:'#fff', wr:'#292524', lb:'#a8a29e', ic:'#f59e0b', ipbg:'#44403c', iptx:'#fff' },
+            ];
+            const currentUiTheme = ref(0);
+            const settingsOpen = ref(false);
+            const overallPreviewOpen = ref(false);
+            const aiModalOpen = ref(false);
+            const aiJSONInput = ref('');
+            const exportDropdownOpen = ref(false);
+            const exportRef = ref(null);
+            const hamburgerRef = ref(null);
+            const mobileExportRef = ref(null);
+            const closeDropdowns = (e) => {
+                if (exportRef.value && exportRef.value.contains(e.target)) return;
+                if (hamburgerRef.value && hamburgerRef.value.contains(e.target)) return;
+                if (mobileExportRef.value && mobileExportRef.value.contains(e.target)) return;
+                exportDropdownOpen.value = false;
+                hamburgerOpen.value = false;
+                mobileExportOpen.value = false;
+            };
+            const applyUiTheme = (idx) => {
+                const t = uiThemes[idx] || uiThemes[0];
+                const root = document.documentElement;
+                root.style.setProperty('--ui-header-bg', t.bg);
+                root.style.setProperty('--ui-header-text', t.txt);
+                root.style.setProperty('--ui-sidebar-bg', t.sbg);
+                root.style.setProperty('--ui-sidebar-border', t.sbd);
+                root.style.setProperty('--ui-editor-bg', t.ebg);
+                root.style.setProperty('--ui-preview-bg', t.pbg);
+                root.style.setProperty('--ui-accent', t.ac);
+                root.style.setProperty('--ui-accent-hover', t.ach);
+                root.style.setProperty('--ui-btn-bg', t.bt);
+                root.style.setProperty('--ui-btn-hover', t.bth);
+                root.style.setProperty('--ui-btn-text', t.btx);
+                root.style.setProperty('--ui-wrap-bg', t.wr);
+                root.style.setProperty('--ui-label-text', t.lb);
+                root.style.setProperty('--ui-icon-color', t.ic);
+                root.style.setProperty('--ui-input-bg', t.ipbg);
+                root.style.setProperty('--ui-input-text', t.iptx);
+            };
+            watch(currentUiTheme, (v) => { applyUiTheme(v); }, { immediate: true });
+            watch(settingsOpen, () => { nextTick(() => lucide.createIcons()); });
+            const footer = ref({ left: defaultDate, center: 'Confidential', right: '{page} / {total}' });
+            const footerShow = ref(true);
+
+            // Tutorial
+            const tutorialWelcome = ref(false);
+            const tutorialStep = ref(0);
+            const tutorialSteps = computed(() => {
+                if (isMobile.value) {
+                    return [
+                        { selector: '.mobile-edge-handle', text: '左端のバーをタップするか、左からスワイプするとスライド一覧が現れます。', pos: 'right' },
+                        { selector: '.app-editor', text: '編集パネルです。選択したスライドの内容を自由に編集できます。', pos: 'left' },
+                        { selector: '.preview-stage', text: 'プレビュー画面です。スライドの見た目をリアルタイムで確認できます。', pos: 'left' },
+                        { selector: 'header', text: '画面上部のツールバーです。左から順に、操作の元に戻す/やり直し、JSON保存/読込、サンプル/新規デッキ切替、フォント選択、カラーテーマ選択、AIでつくる、設定、出力（PPTX/HTML）と多様な機能が並んでいます。', pos: 'bottom' },
+                        { selector: '.layout-btn, .layout-btn-active', text: '「レイアウトパターン」からスライドのデザインを選択できます。様々なレイアウトが用意されています。', pos: 'bottom' },
+                        { selector: 'header', text: 'スライド一覧を開き、下部の「スライド追加」ボタンでスライドを追加できます。', pos: 'bottom' },
+                        { selector: '.mobile-only [title="出力"]', text: '完成したデッキはPowerPoint（.pptx）またはHTML形式で出力できます。', pos: 'bottom' },
+                        { selector: '[title="AIでつくる"]', text: '「AIでつくる」はプロンプトとメモをAIチャットに送信し、返ってきたJSONを貼り付けてスライドを生成します。', pos: 'bottom' },
+                    ];
+                }
+                return [
+                    { selector: '.app-sidebar', text: 'スライド一覧です。スライドの順番変更や追加・削除ができます。', pos: 'right' },
+                    { selector: '.app-editor', text: '編集パネルです。選択したスライドの内容を自由に編集できます。', pos: 'left' },
+                    { selector: '.preview-stage', text: 'プレビュー画面です。スライドの見た目をリアルタイムで確認できます。', pos: 'left' },
+                    { selector: 'header', text: '画面上部のツールバーです。左から順に、操作の元に戻す/やり直し、JSON保存/読込、サンプル/新規デッキ切替、フォント選択、カラーテーマ選択、AIでつくる、設定、出力（PPTX/HTML）と多様な機能が並んでいます。', pos: 'bottom' },
+                    { selector: '.layout-btn, .layout-btn-active', text: '「レイアウトパターン」からスライドのデザインを選択できます。様々なレイアウトが用意されています。', pos: 'bottom' },
+                    { selector: '#add-slide-btn', text: '「新しいスライドを追加」でスライドを末尾に追加できます。', pos: 'top' },
+                    { selector: '[title="PPTXまたはHTMLで出力"]', text: '完成したデッキはPowerPoint（.pptx）またはHTML形式で出力できます。', pos: 'bottom' },
+                    { selector: '[title="AIでつくる"]', text: '「AIでつくる」はプロンプトとメモをAIチャットに送信し、返ってきたJSONを貼り付けてスライドを生成します。', pos: 'bottom' },
+                ];
+            });
+            const holeRect = ref({ top:0, left:0, width:0, height:0, right:0, bottom:0 });
+            const tooltipPos = ref({ top:0, left:0 });
+            const winSize = ref({ w: window.innerWidth, h: window.innerHeight });
+            const removeSpotlight = () => {
+                document.querySelectorAll('.tutorial-highlight').forEach(el => {
+                    el.classList.remove('tutorial-highlight');
+                    if (el.dataset.origPos) {
+                        el.style.position = el.dataset.origPos;
+                        delete el.dataset.origPos;
+                    }
+                });
+            };
+            const applySpotlight = () => {
+                if (tutorialStep.value <= 0) return;
+                const s = tutorialSteps.value[tutorialStep.value - 1];
+                const el = document.querySelector(s.selector);
+                if (!el) return;
+                el.classList.add('tutorial-highlight');
+                const pos = window.getComputedStyle(el).position;
+                if (pos === 'static') {
+                    el.dataset.origPos = pos;
+                    el.style.position = 'relative';
+                }
+                const r = el.getBoundingClientRect();
+                holeRect.value = { top:r.top, left:r.left, width:r.width, height:r.height, right:r.right, bottom:r.bottom };
+                const gap = 16, tw = 300, th = 240;
+                const vw = window.innerWidth, vh = window.innerHeight;
+                let top = 0, left = 0;
+                if (s.pos === 'right') { top = r.top; left = r.right + gap; }
+                else if (s.pos === 'left') { top = r.top; left = Math.max(8, r.left - gap - tw); }
+                else if (s.pos === 'bottom') { top = r.bottom + gap; left = r.left + (r.width - tw) / 2; }
+                else { top = r.top - gap - th; left = r.left + (r.width - tw) / 2; }
+                top = Math.max(8, Math.min(top, vh - th - 8));
+                left = Math.max(8, Math.min(left, vw - tw - 8));
+                tooltipPos.value = { top, left };
+            };
+            const startTutorial = () => { removeSpotlight(); tutorialWelcome.value = false; tutorialStep.value = 1; nextTick(applySpotlight); };
+            const showWelcome = () => { removeSpotlight(); tutorialStep.value = 0; tutorialWelcome.value = true; };
+            const dismissWelcome = () => { tutorialWelcome.value = false; try { localStorage.setItem('slibo_tutorial_done','1'); } catch (e) {} };
+            const endTutorial = () => { removeSpotlight(); tutorialStep.value = -1; try { localStorage.setItem('slibo_tutorial_done','1'); } catch (e) {} };
+            const nextTutorialStep = () => {
+                if (tutorialStep.value >= tutorialSteps.value.length) { endTutorial(); return; }
+                removeSpotlight(); tutorialStep.value++;
+                nextTick(applySpotlight);
+            };
+            const prevTutorialStep = () => {
+                if (tutorialStep.value <= 1) return;
+                removeSpotlight(); tutorialStep.value--;
+                nextTick(applySpotlight);
+            };
+            window.addEventListener('resize', () => {
+                if (tutorialStep.value > 0) { winSize.value = { w:window.innerWidth, h:window.innerHeight }; nextTick(applySpotlight); }
+            });
+
+            // Modal
+            const modalState = ref(null);
+            const showAlert = (message) => new Promise(resolve => { modalState.value = { type: 'alert', message, resolve }; });
+            const showConfirm = (message) => new Promise(resolve => { modalState.value = { type: 'confirm', message, resolve }; });
+            const showPrompt = (message) => new Promise(resolve => { modalState.value = { type: 'prompt', message, value: '', resolve }; });
+            const closeModal = (result) => {
+                const s = modalState.value;
+                if (!s) return;
+                const r = s.resolve;
+                modalState.value = null;
+                if (s.type === 'prompt') r(result ? s.value : null);
+                else r(result);
+            };
+            watch(modalState, (v) => { if (v) nextTick(() => lucide.createIcons()); });
+
+            const fontOptions = [
+                { label: 'Noto Sans JP', value: "'Noto Sans JP', sans-serif", pptx: 'Noto Sans JP' },
+                { label: 'BIZ UDゴシック', value: "'BIZ UDGothic', sans-serif", pptx: 'BIZ UDGothic' },
+
+                { label: '游ゴシック',    value: "'Yu Gothic', 'YuGothic', sans-serif", pptx: 'Yu Gothic' },
+            ];
+            const globalFont = ref(fontOptions[0].value);
+
+            const layoutOptions = [
+                { value: 'cover',      label: 'カバー',     icon: 'square' },
+                { value: 'agenda',     label: 'アジェンダ', icon: 'calendar' },
+                { value: 'section',    label: 'セクション', icon: 'bookmark' },
+                { value: 'centered',   label: '中央テキスト', icon: 'align-center' },
+                { value: 'numbered-list', label: 'ナンバリング', icon: 'list-ordered' },
+                { value: 'two-column', label: '2カラム',    icon: 'columns-2' },
+                { value: 'table',      label: '表',         icon: 'table' },
+                { value: 'closing',    label: 'クロージング', icon: 'square-check' },
+            ];
+
+            const DEFAULT_TITLES = {
+                'cover': 'タイトルを入力', 'section': 'セクションタイトル', 'numbered-list': '目次',
+                'two-column': '比較分析', 'table': 'データテーブル',
+                'centered': 'メッセージ',
+                'closing': 'ご挨拶', 'agenda': 'アジェンダ',
+            };
+            const makeSlide = (layout = 'cover') => ({
+                layout,
+                title: DEFAULT_TITLES[layout] || 'タイトルを入力', subtitle: '', body: '',
+                faqItems: [{q:'質問1を入力', a:'回答1を入力'}, {q:'質問2を入力', a:'回答2を入力'}],
+                items: ['項目1', '項目2', '項目3'],
+                leftTitle: '左カラム', rightTitle: '右カラム',
+                leftItems: ['項目 A-1', '項目 A-2', '項目 A-3'],
+                rightItems: ['項目 B-1', '項目 B-2', '項目 B-3'],
+                // v1.3 +
+                tableHeaders: ['項目', '実績', '予算'],
+                tableRows: [['売上高', '120億', '150億'], ['営業利益', '18億', '25億'], ['顧客数', '1,200', '1,500']],
+                images: [],
+                // アジェンダ
+                agEntries: [{t:'項目1', tp:'オープニング'}, {t:'項目2', tp:'事業報告'}, {t:'項目3', tp:'質疑応答'}, {t:'項目4', tp:'閉会'}],
+                note: '',
+            });
+
+            const slides = ref([
+                Object.assign(makeSlide('numbered-list'), {
+                    title: '目次',
+                    items: ['はじめに', '事業概要', '市場分析', '施策の提案', 'スケジュール', 'まとめ']
+                })
+            ]);
+            const currentSlideIndex = ref(0);
+            const currentSlide = computed(() => slides.value[currentSlideIndex.value]);
+            const footerText = (tpl, idx) => {
+                const total = slides.value ? slides.value.length : 1;
+                return String(tpl || '').replace(/\{page\}/g, idx + 1).replace(/\{total\}/g, total);
+            };
+
+            const layoutIcon = (lo) => (layoutOptions.find(o => o.value === lo) || layoutOptions[0]).icon;
+            const layoutLabel = (lo) => (layoutOptions.find(o => o.value === lo) || layoutOptions[0]).label;
+            const slideHeadline = (s) => s.title || s.subtitle || s.body || '';
+
+            const changeSlide = (index) => { currentSlideIndex.value = index; selectedImageIndex.value = -1; if (isMobile.value) { mobileSidebarOpen.value = false; } nextTick(() => lucide.createIcons()); };
+            const changeLayout = (lo) => {
+                pushHistory();
+                const old = slides.value[currentSlideIndex.value];
+                const ns = makeSlide(lo);
+                ns.title = old.title && old.title !== DEFAULT_TITLES[old.layout] ? old.title : ns.title;
+                ns.images = [...(old.images || [])];
+                ns.note = old.note || '';
+                if (old.subtitle && old.subtitle !== DEFAULT_TITLES[old.layout]) ns.subtitle = old.subtitle;
+                if (old.body && old.body !== 'テキストを入力') ns.body = old.body;
+                if (old.items && old.items.some(x => x.trim() && x !== '項目1')) ns.items = [...old.items];
+                slides.value[currentSlideIndex.value] = ns;
+                nextTick(() => { lucide.createIcons(); updateScale(); });
+            };
+            const addSlide = () => {
+                pushHistory();
+                slides.value.push(makeSlide(defaultLayout.value));
+                currentSlideIndex.value = slides.value.length - 1;
+                selectedImageIndex.value = -1;
+                nextTick(() => lucide.createIcons());
+            };
+            const deleteSlide = (index) => {
+                if (slides.value.length > 1) {
+                    pushHistory();
+                    slides.value.splice(index, 1);
+                    if (currentSlideIndex.value >= slides.value.length) {
+                        currentSlideIndex.value = slides.value.length - 1;
+                    }
+                    selectedImageIndex.value = -1;
+                }
+                nextTick(() => lucide.createIcons());
+            };
+
+            // ===== Undo/Redo =====
+            const historyStack = ref([]);
+            const redoStack = ref([]);
+            const maxHistory = ref(20);
+            const defaultLayout = ref('cover');
+            let isRestoring = false;
+
+            const captureState = () => ({
+                slides: JSON.parse(JSON.stringify(slides.value)),
+                currentSlideIndex: currentSlideIndex.value,
+            });
+
+            const pushHistory = () => {
+                if (isRestoring) return;
+                historyStack.value.push(captureState());
+                if (historyStack.value.length > maxHistory.value) historyStack.value.shift();
+                redoStack.value = [];
+            };
+
+            const restoreState = (state) => {
+                slides.value = state.slides;
+                currentSlideIndex.value = state.currentSlideIndex;
+            };
+
+            const undo = () => {
+                if (historyStack.value.length === 0) return;
+                isRestoring = true;
+                redoStack.value.push(captureState());
+                const prev = historyStack.value.pop();
+                restoreState(prev);
+                isRestoring = false;
+                nextTick(() => { lucide.createIcons(); updateScale(); });
+            };
+
+            const redo = () => {
+                if (redoStack.value.length === 0) return;
+                isRestoring = true;
+                historyStack.value.push(captureState());
+                const next = redoStack.value.pop();
+                restoreState(next);
+                isRestoring = false;
+                nextTick(() => { lucide.createIcons(); updateScale(); });
+            };
+
+            let historyTimeout = null;
+            const scheduleHistory = () => {
+                if (isRestoring) return;
+                if (historyTimeout) clearTimeout(historyTimeout);
+                historyTimeout = setTimeout(() => { pushHistory(); }, 300);
+            };
+
+            // ===== Save/Load =====
+            const AUTOSAVE_KEY = 'slibo-lite-v13-autosave';
+            const SETTINGS_KEY = 'slibo-lite-v13-settings';
+
+            const buildSaveData = () => ({
+                version: '1.3-lite',
+                savedAt: new Date().toISOString(),
+                state: captureState(),
+                footer: footer.value,
+                footerShow: footerShow.value,
+                globalMainColor: globalMainColor.value,
+                globalAccentColor: globalAccentColor.value,
+                globalFont: globalFont.value,
+            });
+
+            const loadAutoSave = () => {
+                try {
+                    const raw = localStorage.getItem(AUTOSAVE_KEY);
+                    if (!raw) return false;
+                    const data = JSON.parse(raw);
+                    if (data.state) {
+                        slides.value = data.state.slides;
+                        currentSlideIndex.value = data.state.currentSlideIndex || 0;
+                        if (data.footer) footer.value = data.footer;
+                        if (data.footerShow !== undefined) footerShow.value = data.footerShow;
+                        if (data.globalMainColor) globalMainColor.value = data.globalMainColor;
+                        if (data.globalAccentColor) globalAccentColor.value = data.globalAccentColor;
+                        if (data.globalFont) globalFont.value = data.globalFont;
+                        return true;
+                    }
+                } catch (e) { /* ignore */ }
+                return false;
+            };
+
+            // ===== App settings persistence =====
+            const saveSettings = () => {
+                try {
+                    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+                        defaultLayout: defaultLayout.value,
+                        maxHistory: maxHistory.value,
+                        uiTheme: currentUiTheme.value,
+                        orientation: layoutOrientation.value,
+                    }));
+                } catch (e) { /* ignore */ }
+            };
+            const loadSettings = () => {
+                try {
+                    const raw = localStorage.getItem(SETTINGS_KEY);
+                    if (!raw) return;
+                    const data = JSON.parse(raw);
+                    if (data.defaultLayout) defaultLayout.value = data.defaultLayout;
+                    if (data.maxHistory) maxHistory.value = data.maxHistory;
+                    if (typeof data.uiTheme === 'number') currentUiTheme.value = data.uiTheme;
+                    if (data.orientation === 'vertical' || data.orientation === 'horizontal') layoutOrientation.value = data.orientation;
+                } catch (e) { /* ignore */ }
+            };
+            const editorWidth = ref(420);
+            const editorHeight = ref(360);
+            const layoutOrientation = ref('horizontal');
+            const toggleOrientation = () => {
+                layoutOrientation.value = layoutOrientation.value === 'horizontal' ? 'vertical' : 'horizontal';
+                nextTick(updateScale);
+            };
+            const editorPane = ref(null);
+            let dragging = false;
+            const startDrag = (e) => {
+                dragging = true;
+                document.body.classList.add(layoutOrientation.value === 'vertical' ? 'dragging-splitter-vertical' : 'dragging-splitter');
+                document.getElementById('splitter').classList.add('dragging');
+                e.preventDefault();
+            };
+            const startDragTouch = (e) => {
+                dragging = true;
+                document.body.classList.add(layoutOrientation.value === 'vertical' ? 'dragging-splitter-vertical' : 'dragging-splitter');
+                document.getElementById('splitter').classList.add('dragging');
+            };
+            const onMove = (e) => {
+                if (!dragging) return;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                if (layoutOrientation.value === 'vertical') {
+                    const headerH = 48;
+                    let newHeight = window.innerHeight - clientY - 6;
+                    const maxH = window.innerHeight - headerH - 200;
+                    if (newHeight < 200) newHeight = 200;
+                    if (newHeight > maxH) newHeight = maxH;
+                    editorHeight.value = newHeight;
+                } else {
+                    const leftSidebar = 320;
+                    let newWidth = clientX - leftSidebar;
+                    const total = window.innerWidth - leftSidebar - 6;
+                    const min = 280;
+                    const max = Math.max(min, total - 320);
+                    if (newWidth < min) newWidth = min;
+                    if (newWidth > max) newWidth = max;
+                    editorWidth.value = newWidth;
+                }
+                nextTick(updateScale);
+            };
+            const endDrag = () => {
+                if (!dragging) return;
+                dragging = false;
+                document.body.classList.remove('dragging-splitter', 'dragging-splitter-vertical');
+                const sp = document.getElementById('splitter');
+                if (sp) sp.classList.remove('dragging');
+            };
+
+            watch([defaultLayout, maxHistory, currentUiTheme, layoutOrientation], saveSettings, { deep: true });
+
+            // Auto-save on changes
+            watch([slides, footer, globalMainColor, globalAccentColor, globalFont], () => {
+                try {
+                    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(buildSaveData()));
+                } catch (e) { /* quota exceeded */ }
+            }, { deep: true });
+
+            // ===== AIでつくる =====
+            const AI_SCHEMA = {
+                cover:     { title:'str', subtitle:'str', note:'str' },
+                'two-column': { title:'str', leftTitle:'str', leftItems:'str[]', rightTitle:'str', rightItems:'str[]', note:'str' },
+                section:   { title:'str', subtitle:'str', note:'str' },
+                table:     { title:'str', tableHeaders:'str[]', tableRows:'str[][]', note:'str' },
+                'numbered-list': { title:'str', items:'str[]', note:'str' },
+                centered:  { title:'str', body:'str', subtitle:'str', note:'str' },
+                closing:   { title:'str', body:'str', subtitle:'str', items:'str[]', note:'str' },
+                agenda:    { title:'str', agEntries:'[{t,tp}]', note:'str' },
+            };
+            const aiSchemaDoc = () => {
+                const lines = [];
+                const L = layoutOptions;
+                for (const lo of L) {
+                    const schema = AI_SCHEMA[lo.value];
+                    if (!schema) continue;
+                    const keys = Object.entries(schema).map(([k, t]) => {
+                        if (t === 'str') return `        "${k}": "文字列"`;
+                        if (t === 'num') return `        "${k}": 数値`;
+                        if (t === 'str[][]') return `        "${k}": [["文字列", ...], ...]`;
+                        if (t === 'str[]') return `        "${k}": ["文字列", ...]`;
+                        if (t.startsWith('[{')) return `        "${k}": [${t.slice(1)}]`;
+                        return `        "${k}": ${t}`;
+                    }).join(',\n');
+                    lines.push(`  - type: "${lo.value}" (${lo.label})`);
+                    lines.push(`    data: {\n${keys}\n    }`);
+                }
+                return lines.join('\n');
+            };
+            const buildAIPrompt = () => {
+                const paletteNames = colorThemes.map((t, i) => `  ${i}: ${t.name} (main:${t.main}, accent:${t.accent})`).join('\n');
+                const schemaLines = [];
+                for (const lo of layoutOptions) {
+                    const schema = AI_SCHEMA[lo.value];
+                    if (!schema) continue;
+                    const keys = Object.entries(schema).map(([k, t]) => {
+                        if (t === 'str') return `          "${k}": "文字列"`;
+                        if (t === 'num') return `          "${k}": 数値`;
+                        if (t === 'str[]') return `          "${k}": ["文字列", ...]`;
+                        if (t === 'str[][]') return `          "${k}": [["文字列", ...], ...]`;
+                        if (t.startsWith('[{')) {
+                            const inner = t.slice(2, -1);
+                            return `          "${k}": [{"${inner.split(',').join('", "')}": "..."}]`;
+                        }
+                        return `          "${k}": ${t}`;
+                    }).join(',\n');
+                    schemaLines.push(`- type: "${lo.value}"（${lo.label}）\n  data: {\n${keys}\n  }`);
+                }
+                return `あなたはプレゼンテーション資料作成のプロフェッショナルです。
+ユーザーから提供された議事録・メモ・資料を分析し、スライドデッキのJSONを生成してください。
+
+## 重要な注意
+- **絶対にHTML、SVG、Markdownの表以外のリッチテキストを生成しないでください。**
+- 出力は必ずプレーンテキストのJSONのみです。
+
+## 2段階の応答フロー
+
+### フェーズ1：構成案の提案
+1. ユーザーからの入力が空欄の場合のみ「会議の文字起こしやメモなど、追加情報やファイルを添付してください」と返してください。議事録・メモ以外にも、「〇〇についてのプレゼン資料を作りたい」「△△の研修資料を作成したい」などの抽象的なテーマ・指示が与えられた場合は、そのテーマについて一般的な知識に基づいてスライド構成を提案してください。
+2. 最初の提案は**必ずMarkdown表形式のみ**で提示してください（例：| # | レイアウト | タイトル | 内容概要 |）。全体の枚数見積もりと各スライドに適用するレイアウトパターンを必ず含めてください。
+3. 構成案の最後に「この構成で進めてもよろしいでしょうか？」と尋ねてください。
+
+### フェーズ2：JSON出力（ユーザー承認後のみ）
+4. ユーザーが「はい」「お願いします」「Yes」「OK」など肯定の返答をした場合のみ、**JSONオブジェクトのみ**を出力してください。否定・修正の場合はユーザーの指示に従って再提案してください。
+5. **JSON出力時の絶対ルール：**
+   - 前後の説明文・Markdownコードフェンス(\`\`\`json / \`\`\`)・コメントは一切含めない
+   - 必ず複数行整形（pretty print）、字下げは2スペース
+   - 厳密に有効なJSONとし、[ ] { } ( ) などの記号をバックスラッシュでエスケープしない
+   - type は以下に示す9種のいずれか、data のキーはスキーマと完全一致（余計なキー追加・必須キー省略の禁止）
+   - image は常に空文字列 ""
+   - 各スライドには必ずスピーカーノート "note" を付ける（dataと同じ階層）。発表内容を1〜3文の自然な日本語（話し言葉）で記述し、背景説明・数字の解釈・聴衆への補足を含める
+   - **Markdownの表組み・見出し・箇条書き・太字・HTMLタグは一切使わない**
+
+## 全体構造
+${JSON.stringify({palette: "配色インデックス（0〜2）", font: "フォント名（後述）", slides: [{type: "レイアウト種別", data: {title: "スキーマに従う"}, note: "このスライドのスピーカーノート（口頭で話す内容）"}]}, null, 2)}
+
+### palette（配色）
+以下の3テーマから選択し、インデックス番号で指定してください。
+${paletteNames}
+
+### font（フォント）
+以下のいずれかから選択してください。
+- "Noto Sans JP"（推奨）
+- "BIZ UDGothic"
+- "Yu Gothic"
+
+## 各レイアウトのdataスキーマ（9種）
+${schemaLines.join('\n\n')}
+
+## 推奨構成
+cover（表紙）→ agenda（アジェンダ）→ section（セクション見出し）→ 本文スライド → closing（〆）の流れを推奨します。
+対象読者・想定枚数・トーン（フォーマル/カジュアル等）をユーザーにヒアリングしてから構成を提案してください。`;
+            };
+            const aiPromptText = computed(buildAIPrompt);
+            const copyAIPrompt = async () => {
+                const text = aiPromptText.value;
+                
+                // 方法1: Clipboard API
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        await showAlert('プロンプトをクリップボードにコピーしました！\nChatGPT / Gemini / Claude等に貼り付けてご利用ください。');
+                    } catch {
+                        await fallbackCopy(text);
+                    }
+                } else {
+                    await fallbackCopy(text);
+                }
+            };
+            
+            const fallbackCopy = async (text) => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.left = '-9999px';
+                textarea.style.top = '-9999px';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                
+                try {
+                    const success = document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    if (success) {
+                        await showAlert('プロンプトをクリップボードにコピーしました！\nChatGPT / Gemini / Claude等に貼り付けてご利用ください。');
+                    } else {
+                        await showAlert('テキストが選択されました。テキストを長押しして「コピー」を選択してください。');
+                    }
+                } catch (e) {
+                    document.body.removeChild(textarea);
+                    await showAlert('コピーに失敗しました。テキストを直接選択してコピーしてください。');
+                }
+            };
+            const formatAIJSON = async () => {
+                try {
+                    const parsed = JSON.parse(aiJSONInput.value);
+                    aiJSONInput.value = JSON.stringify(parsed, null, 2);
+                } catch (e) {
+                    await showAlert('JSONの形式が正しくありません: ' + e.message);
+                }
+            };
+            const parseAIDeckJSON = (raw) => {
+                let t = raw.trim();
+                // Remove BOM
+                if (t.charCodeAt(0) === 0xFEFF) t = t.slice(1);
+                // Remove code fences
+                t = t.replace(/^```(?:json)?\s*([\s\S]*?)```$/gm, '$1');
+                // If text contains a JSON object, try to extract it
+                const braceStart = t.indexOf('{');
+                const braceEnd = t.lastIndexOf('}');
+                if (braceStart >= 0 && braceEnd > braceStart) {
+                    t = t.slice(braceStart, braceEnd + 1);
+                }
+                return JSON.parse(t);
+            };
+            const applyAIDeck = async () => {
+                const text = aiJSONInput.value.trim();
+                if (!text) return;
+                try {
+                    const data = parseAIDeckJSON(text);
+                    if (!data.slides || !Array.isArray(data.slides)) {
+                        await showAlert('"slides" 配列が見つかりません。有効なJSONデッキデータを貼り付けてください。');
+                        return;
+                    }
+                    pushHistory();
+                    // Apply colors
+                    if (data.palette !== undefined && colorThemes[data.palette]) {
+                        const t = colorThemes[data.palette];
+                        globalMainColor.value = t.main;
+                        globalAccentColor.value = t.accent;
+                    }
+                    // Apply font
+                    if (data.font) {
+                        const found = fontOptions.find(f => f.value.includes(data.font) || f.pptx === data.font || f.label === data.font);
+                        if (found) globalFont.value = found.value;
+                    }
+                    // Build slides with fallback for unknown layouts
+                    const newSlides = data.slides.map(s => {
+                        const validLayouts = layoutOptions.map(o => o.value);
+                        const layout = validLayouts.includes(s.type) ? s.type : 'cover';
+                        const base = makeSlide(layout);
+                        // Merge data into base, only keeping valid keys for this layout
+                        const merged = Object.assign({}, base, s.data || {});
+                        merged.layout = layout;
+                        merged.note = s.note || '';
+                        return merged;
+                    });
+                    slides.value = newSlides;
+                    currentSlideIndex.value = 0;
+                    aiModalOpen.value = false;
+                    aiJSONInput.value = '';
+                    nextTick(() => { lucide.createIcons(); updateScale(); });
+                    await showAlert('デッキを反映しました！');
+                } catch (e) {
+                    await showAlert('JSONの解析に失敗しました: ' + e.message);
+                }
+            };
+
+            // ===== Slide Duplicate & Reorder =====
+            const duplicateSlide = (index) => {
+                pushHistory();
+                const copy = JSON.parse(JSON.stringify(slides.value[index]));
+                slides.value.splice(index + 1, 0, copy);
+                currentSlideIndex.value = index + 1;
+                selectedImageIndex.value = -1;
+                nextTick(() => { lucide.createIcons(); updateScale(); });
+            };
+
+            const moveSlide = (from, to) => {
+                if (from === to) return;
+                pushHistory();
+                const [moved] = slides.value.splice(from, 1);
+                slides.value.splice(to, 0, moved);
+                currentSlideIndex.value = to;
+                selectedImageIndex.value = -1;
+                nextTick(() => { lucide.createIcons(); updateScale(); });
+            };
+
+            let dragIndex = null;
+            const onDragStart = (index, e) => {
+                dragIndex = index;
+                e.dataTransfer.effectAllowed = 'move';
+            };
+            const onDragEnd = () => { dragIndex = null; };
+            const onDragOver = (e) => { e.dataTransfer.dropEffect = 'move'; };
+            const onDrop = (index) => {
+                if (dragIndex !== null && dragIndex !== index) {
+                    moveSlide(dragIndex, index);
+                }
+                dragIndex = null;
+            };
+
+            // ===== Templates =====
+            const TEMPLATE_KEY = 'slidegen-v13-templates';
+
+            const slideTemplates = ref([
+                { name: '導入', icon: 'square', data: Object.assign(makeSlide('cover'), { title: 'タイトルを入力', subtitle: 'サブタイトル' }) },
+                { name: '比較', icon: 'columns-2', data: Object.assign(makeSlide('two-column'), { title: '比較分析', leftTitle: '強み', leftItems: ['項目1', '項目2', '項目3', ''], rightTitle: '課題', rightItems: ['項目1', '項目2', '項目3', ''] }) },
+                { name: 'セクション', icon: 'bookmark', data: Object.assign(makeSlide('section'), { subtitle: 'SECTION 01', title: 'セクションタイトル' }) },
+                { name: '表', icon: 'table', data: Object.assign(makeSlide('table'), { title: 'データテーブル', tableHeaders: ['項目', '実績', '予算'], tableRows: [['A', '100', '120'], ['B', '200', '180'], ['C', '150', '150']] }) },
+                { name: 'ナンバリング', icon: 'list-ordered', data: Object.assign(makeSlide('numbered-list'), { title: '手順', items: ['Step 1', 'Step 2', 'Step 3', 'Step 4'] }) },
+                { name: '中央テキスト', icon: 'align-center', data: Object.assign(makeSlide('centered'), { title: 'メッセージ', body: 'ここに伝えたいメッセージを入力', subtitle: '— サブテキスト' }) },
+                { name: 'クロージング', icon: 'square-check', data: Object.assign(makeSlide('closing'), { title: 'ご清聴ありがとうございました', subtitle: 'Q&A' }) },
+                { name: 'アジェンダ', icon: 'list-ordered', data: Object.assign(makeSlide('agenda'), { title: 'アジェンダ', items: ['項目1', '項目2', '項目3', '項目4'] }) },
+            ]);
+
+
+
+            const applyTemplate = (tpl) => {
+                pushHistory();
+                const newSlide = JSON.parse(JSON.stringify(tpl.data));
+                slides.value.splice(currentSlideIndex.value + 1, 0, newSlide);
+                currentSlideIndex.value++;
+                selectedImageIndex.value = -1;
+                nextTick(() => { lucide.createIcons(); updateScale(); });
+            };
+
+            // ===== Deck switching =====
+            const createSampleDeck = () => [
+                Object.assign(makeSlide('cover'), { title: '新サービスの事業計画', subtitle: '2026年度 事業戦略発表会' }),
+                Object.assign(makeSlide('agenda'), { title: '本日のアジェンダ', agEntries: [{t:'項目1', tp:'オープニング'}, {t:'項目2', tp:'事業報告'}, {t:'項目3', tp:'質疑応答'}, {t:'項目4', tp:'閉会'}] }),
+                Object.assign(makeSlide('section'), { subtitle: '目次', title: '事業概要' }),
+                Object.assign(makeSlide('two-column'), { title: '強みと課題', leftTitle: '強み', leftItems: ['高い技術力', '豊富な実績', '優秀な人材'], rightTitle: '課題', rightItems: ['市場認知度向上', 'リソース不足の解消', '業務効率化の推進'] }),
+                Object.assign(makeSlide('numbered-list'), { title: '重点施策', items: ['デジタル化推進', '人材育成プログラム', '新規市場開拓', '業務効率化'] }),
+                Object.assign(makeSlide('table'), { title: '業績比較', tableHeaders: ['項目', '実績', '予算'], tableRows: [['売上高', '120億', '150億'], ['営業利益', '18億', '25億'], ['顧客数', '1,200', '1,500']] }),
+                Object.assign(makeSlide('centered'), { title: 'メッセージ', body: '変革は、今ここから。', subtitle: '— 経営戦略レポート 2026' }),
+                Object.assign(makeSlide('closing'), { body: 'ご清聴ありがとうございました', subtitle: '経営企画部', items: ['Email: contact@example.com', 'Tel: 03-xxxx-xxxx'] }),
+            ];
+
+            const loadSampleDeck = async () => { footer.value = { left: defaultDate, center: footer.value.center, right: footer.value.right };
+                if (!await showConfirm('現在のデッキを破棄してサンプルデッキに切り替えますか？')) return;
+                pushHistory();
+                slides.value = createSampleDeck();
+                currentSlideIndex.value = 0;
+                selectedImageIndex.value = -1;
+                nextTick(() => { lucide.createIcons(); updateScale(); });
+            };
+
+            const loadEmptyDeck = async () => { footer.value = { left: defaultDate, center: footer.value.center, right: footer.value.right };
+                if (!await showConfirm('現在のデッキを破棄して空の新規デッキに切り替えますか？')) return;
+                pushHistory();
+                slides.value = [makeSlide(defaultLayout.value)];
+                currentSlideIndex.value = 0;
+                selectedImageIndex.value = -1;
+                nextTick(() => { lucide.createIcons(); updateScale(); });
+            };
+
+            // ===== Dynamic item helpers =====
+            const addItem = (arr, empty) => { arr.push(empty); scheduleHistory(); };
+            const removeItem = (arr, idx) => { if (arr.length > 1) { arr.splice(idx, 1); scheduleHistory(); } };
+
+            // ===== Table helpers =====
+            const addTableRow = () => {
+                const n = currentSlide.value.tableHeaders.length;
+                currentSlide.value.tableRows.push(Array(n).fill(''));
+                scheduleHistory();
+            };
+            const removeTableRow = (ri) => {
+                if (currentSlide.value.tableRows.length > 1) {
+                    currentSlide.value.tableRows.splice(ri, 1);
+                    scheduleHistory();
+                }
+            };
+
+            // ===== Image Management =====
+            const imageInput = ref(null);
+            const triggerImageUpload = () => { if (imageInput.value) imageInput.value.click(); };
+            const onImageSelected = async (e) => {
+                const f = e.target.files && e.target.files[0];
+                if (!f) return;
+                if (f.size > 5 * 1024 * 1024) { await showAlert('画像サイズは5MB以下にしてください'); return; }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    pushHistory();
+                    currentSlide.value.images.push({
+                        dataUrl: reader.result,
+                        x: 100, y: 200, w: 300, h: 200,
+                    });
+                    selectedImageIndex.value = currentSlide.value.images.length - 1;
+                    nextTick(() => updateScale());
+                };
+                reader.readAsDataURL(f);
+                e.target.value = '';
+            };
+            const readImageFile = (file) => {
+                if (!file.type.startsWith('image/')) return;
+                if (file.size > 5 * 1024 * 1024) { showAlert('画像サイズは5MB以下にしてください'); return; }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    pushHistory();
+                    currentSlide.value.images.push({
+                        dataUrl: reader.result,
+                        x: 100, y: 200, w: 300, h: 200,
+                    });
+                    selectedImageIndex.value = currentSlide.value.images.length - 1;
+                    nextTick(() => updateScale());
+                };
+                reader.readAsDataURL(file);
+            };
+            const onDocumentPaste = (e) => {
+                const tag = e.target?.tagName;
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable) return;
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (const item of items) {
+                    if (item.type.startsWith('image/')) {
+                        const file = item.getAsFile();
+                        if (file) readImageFile(file);
+                        break;
+                    }
+                }
+            };
+            const onDocumentDragOver = (e) => {
+                if (previewStage.value && previewStage.value.contains(e.target)) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                }
+            };
+            const onDocumentDrop = (e) => {
+                if (!previewStage.value || !previewStage.value.contains(e.target)) return;
+                e.preventDefault();
+                const dt = e.dataTransfer;
+                if (!dt) return;
+                let file = null;
+                if (dt.files?.length > 0) {
+                    for (const f of dt.files) {
+                        if (f.type.startsWith('image/')) { file = f; break; }
+                    }
+                } else if (dt.items?.length > 0) {
+                    for (const item of dt.items) {
+                        if (item.type.startsWith('image/')) { file = item.getAsFile(); break; }
+                    }
+                }
+                if (file) readImageFile(file);
+            };
+            const removeImage = (idx) => {
+                pushHistory();
+                currentSlide.value.images.splice(idx, 1);
+                selectedImageIndex.value = -1;
+            };
+
+            const selectedImageIndex = ref(-1);
+            const currentScale = ref(0.5);
+            const layoutCollapsed = ref(true);
+
+            // Image drag (mouse)
+            let imageDragData = null;
+            const startImageDrag = (e, imgIndex) => {
+                if (e.button !== 0) return;
+                selectedImageIndex.value = imgIndex;
+                const img = currentSlide.value.images[imgIndex];
+                imageDragData = {
+                    imgIndex, startMX: e.clientX, startMY: e.clientY,
+                    startX: img.x, startY: img.y, dragged: false,
+                };
+                e.preventDefault();
+            };
+            const onImageDragMove = (e) => {
+                if (!imageDragData) return;
+                imageDragData.dragged = true;
+                const s = currentScale.value || 0.5;
+                const dx = (e.clientX - imageDragData.startMX) / s;
+                const dy = (e.clientY - imageDragData.startMY) / s;
+                const img = currentSlide.value.images[imageDragData.imgIndex];
+                img.x = Math.max(0, imageDragData.startX + dx);
+                img.y = Math.max(0, imageDragData.startY + dy);
+            };
+            const stopImageDrag = () => {
+                if (imageDragData) {
+                    if (imageDragData.dragged) pushHistory();
+                    imageDragData = null;
+                }
+                if (resizeData) {
+                    if (resizeData.dragged) pushHistory();
+                    resizeData = null;
+                }
+            };
+
+            // Image drag (touch)
+            const startImageDragTouch = (e, imgIndex) => {
+                const touch = e.touches[0];
+                selectedImageIndex.value = imgIndex;
+                const img = currentSlide.value.images[imgIndex];
+                imageDragData = {
+                    imgIndex, startMX: touch.clientX, startMY: touch.clientY,
+                    startX: img.x, startY: img.y, dragged: false,
+                };
+            };
+            const onTouchImageDragMove = (e) => {
+                if (!imageDragData && !resizeData) return;
+                const touch = e.touches[0];
+                if (imageDragData) {
+                    imageDragData.dragged = true;
+                    const s = currentScale.value || 0.5;
+                    const dx = (touch.clientX - imageDragData.startMX) / s;
+                    const dy = (touch.clientY - imageDragData.startMY) / s;
+                    const img = currentSlide.value.images[imageDragData.imgIndex];
+                    img.x = Math.max(0, imageDragData.startX + dx);
+                    img.y = Math.max(0, imageDragData.startY + dy);
+                }
+                if (resizeData) {
+                    resizeData.dragged = true;
+                    updateResize(touch.clientX, touch.clientY);
+                }
+            };
+
+            // Image resize (mouse)
+            let resizeData = null;
+            const startResize = (e, imgIndex, handle) => {
+                if (e.button !== 0) return;
+                e.stopPropagation();
+                selectedImageIndex.value = imgIndex;
+                const img = currentSlide.value.images[imgIndex];
+                resizeData = {
+                    imgIndex, handle,
+                    startMX: e.clientX, startMY: e.clientY,
+                    startX: img.x, startY: img.y, startW: img.w, startH: img.h,
+                    dragged: false,
+                };
+                e.preventDefault();
+            };
+
+            const updateResize = (clientX, clientY) => {
+                if (!resizeData) return;
+                const s = currentScale.value || 0.5;
+                const dx = (clientX - resizeData.startMX) / s;
+                const dy = (clientY - resizeData.startMY) / s;
+                const img = currentSlide.value.images[resizeData.imgIndex];
+                const { handle, startX, startY, startW, startH } = resizeData;
+                let newX = startX, newY = startY, newW = startW, newH = startH;
+                if (handle.includes('e')) { newW = Math.max(30, startW + dx); }
+                if (handle.includes('w')) { newW = Math.max(30, startW - dx); newX = startX + startW - newW; }
+                if (handle.includes('s')) { newH = Math.max(30, startH + dy); }
+                if (handle.includes('n')) { newH = Math.max(30, startH - dy); newY = startY + startH - newH; }
+                img.x = newX; img.y = newY; img.w = newW; img.h = newH;
+            };
+
+            const onResizeMove = (e) => { updateResize(e.clientX, e.clientY); };
+            const stopResize = () => { stopImageDrag(); };
+
+            // Image resize (touch)
+            const startResizeTouch = (e, imgIndex, handle) => {
+                e.stopPropagation();
+                selectedImageIndex.value = imgIndex;
+                const img = currentSlide.value.images[imgIndex];
+                const touch = e.touches[0];
+                resizeData = {
+                    imgIndex, handle,
+                    startMX: touch.clientX, startMY: touch.clientY,
+                    startX: img.x, startY: img.y, startW: img.w, startH: img.h,
+                    dragged: false,
+                };
+            };
+
+            // ===== Preview Scale =====
+            const previewStage = ref(null);
+            const slideEl = ref(null);
+            const updateScale = () => {
+                if (!previewStage.value || !slideEl.value) return;
+                const w = previewStage.value.clientWidth;
+                const h = previewStage.value.clientHeight;
+                if (w <= 0 || h <= 0) return;
+                const pad = 40;
+                const sx = (w - pad) / 1280;
+                const sy = (h - pad) / 720;
+                const s = Math.max(0.05, Math.min(sx, sy));
+                currentScale.value = s;
+                slideEl.value.style.transform = 'translate(-50%, -50%) scale(' + s + ')';
+            };
+
+            // ===== Splitter (moved above) =====
+
+            // ===== Mobile =====
+            const isMobile = ref(window.innerWidth < 768);
+            const mobileSidebarOpen = ref(false);
+            const hamburgerOpen = ref(false);
+            const mobileExportOpen = ref(false);
+            const checkMobile = () => {
+                isMobile.value = window.innerWidth < 768;
+                if (!isMobile.value) mobileSidebarOpen.value = false;
+                if (!isMobile.value) hamburgerOpen.value = false;
+                if (!isMobile.value) mobileExportOpen.value = false;
+            };
+            watch(mobileSidebarOpen, (v) => {
+                document.body.classList.toggle('drawer-open', v);
+            });
+            let swipeTouchStartX = 0;
+            let swipeActive = false;
+            const onSwipeStart = (e) => {
+                swipeTouchStartX = e.touches[0].clientX;
+                swipeActive = swipeTouchStartX < 45;
+            };
+            const onSwipeEnd = (e) => {
+                if (!swipeActive || mobileSidebarOpen.value) return;
+                const dx = e.changedTouches[0].clientX - swipeTouchStartX;
+                if (dx > 50) mobileSidebarOpen.value = true;
+                swipeActive = false;
+            };
+
+            // Preview wheel (page navigation)
+            let wheelLock = 0;
+            const onPreviewWheel = (e) => {
+                const now = Date.now();
+                if (now < wheelLock) return;
+                const d = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+                if (Math.abs(d) < 1) return;
+                wheelLock = now + 100;
+                if (d > 0 && currentSlideIndex.value < slides.value.length - 1) {
+                    changeSlide(currentSlideIndex.value + 1);
+                } else if (d < 0 && currentSlideIndex.value > 0) {
+                    changeSlide(currentSlideIndex.value - 1);
+                }
+            };
+
+            // Slide swipe (page navigation)
+            let slideSwipeStartX = 0;
+            let slideSwipeActive = false;
+            const onSlideSwipeStartDoc = (e) => {
+                if (mobileSidebarOpen.value) return;
+                const el = e.target;
+                if (el.closest) {
+                    if (el.closest('.app-sidebar, .app-header, .preview-nav-btn, .mobile-edge-handle')) return;
+                    if (el.closest('button, select, input, textarea')) return;
+                }
+                slideSwipeStartX = e.touches[0].clientX;
+                slideSwipeActive = true;
+            };
+            const onSlideSwipeEndDoc = (e) => {
+                if (!slideSwipeActive) return;
+                slideSwipeActive = false;
+                const wasDragging = imageDragData || resizeData;
+                if (wasDragging) return;
+                const dx = e.changedTouches[0].clientX - slideSwipeStartX;
+                if (Math.abs(dx) > 50) {
+                    if (dx < 0 && currentSlideIndex.value < slides.value.length - 1) {
+                        changeSlide(currentSlideIndex.value + 1);
+                    } else if (dx > 0 && currentSlideIndex.value > 0) {
+                        changeSlide(currentSlideIndex.value - 1);
+                    }
+                }
+            };
+
+            // Font & Color
+            watch(globalFont, (v) => {
+                document.documentElement.style.setProperty('--slide-font', v);
+            }, { immediate: true });
+            watch(globalMainColor, (v) => { if (/^#[0-9a-fA-F]{6}$/.test(v)) document.documentElement.style.setProperty('--main-color', v); }, { immediate: true });
+            watch(globalAccentColor, (v) => { if (/^#[0-9a-fA-F]{6}$/.test(v)) document.documentElement.style.setProperty('--accent-color', v); }, { immediate: true });
+
+            // ===== HTML Export =====
+            const exportHTML = () => {
+                const font = globalFont.value;
+                const ctx = {
+                    font, main: globalMainColor.value, accent: globalAccentColor.value,
+                    footer: footer.value, footerShow: footerShow.value, total: slides.value.length
+                };
+                const slidesHTML = slides.value.map((s, idx) => renderSlideHTML(s, idx, font, ctx)).join('');
+                const totalSlides = slides.value.length;
+                const finalHTML = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n<meta charset="utf-8">\n<title>' + esc(slides.value[0]?.title || 'Presentation') + '</title>\n<style>\n@import url(\'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap\');\n@import url(\'https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap\');\n@import url(\'https://fonts.googleapis.com/css2?family=BIZ+UDGothic:wght@400;700&display=swap\');\n* { margin:0; padding:0; box-sizing:border-box; }\nbody { background:#0f172a; font-family:' + font + '; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; overflow:hidden; }\n.slides-viewport { overflow:hidden; width:1280px; max-width:95vw; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.4); }\n.slides-track { display:flex; transition:transform 0.35s ease; transform-origin:center center; }\n.slide-container { display:flex; flex-direction:column; flex-shrink:0; width:1280px; height:720px; margin:0 !important; transition:opacity 0.3s ease; }\n.nav-bar { display:flex; align-items:center; gap:16px; margin-top:24px; background:rgba(15,23,42,0.7); padding:8px 20px; border-radius:28px; backdrop-filter:blur(4px); }\n.nav-btn { width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.12); color:#fff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s; }\n.nav-btn:hover { background:rgba(255,255,255,0.25); }\n.nav-btn:disabled { opacity:0.3; cursor:default; }\n.page-indicator { color:rgba(255,255,255,0.6); font-size:14px; font-family:sans-serif; min-width:60px; text-align:center; }\n.fs-btn { position:fixed; top:16px; right:16px; z-index:10001; width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,0.3); background:rgba(15,23,42,0.6); color:#fff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); transition:background 0.2s; font-family:sans-serif; }\n.fs-btn:hover { background:rgba(255,255,255,0.15); }body.ui-hidden .nav-bar, body.ui-hidden .fs-btn { opacity:0; pointer-events:none; transition:opacity 0.3s; }body.is-fullscreen { background:#000; }\nbody.is-fullscreen .slides-viewport { position:fixed; inset:0; width:auto; max-width:none; border-radius:0; box-shadow:none; z-index:9999; overflow:hidden; background:#000; }\nbody.is-fullscreen .nav-bar { position:fixed; bottom:32px; left:50%; transform:translateX(-50%); z-index:10000; }\n@media print { body { background:transparent; } .slides-viewport { box-shadow:none; border-radius:0; } .nav-bar { display:none; } .slide-container { box-shadow:none !important; } } @media (max-width:768px){body{overflow-y:auto;padding:8px 0}.slides-viewport{max-width:100vw;width:100%;border-radius:0}.nav-bar{margin-top:8px;gap:8px}.nav-btn{width:32px;height:32px;font-size:14px}.fs-btn{display:none}}\n</style>\n</head>\n<body>\n<div class="slides-viewport"><div class="slides-track">' + slidesHTML + '</div></div>\n<div class="nav-bar">\n<button class="nav-btn" id="prevBtn" onclick="goToSlide(currentSlide-1)" disabled>\u25C0</button>\n<span class="page-indicator" id="pageNum">1 / ' + totalSlides + '</span>\n<button class="nav-btn" id="nextBtn" onclick="goToSlide(currentSlide+1)">\u25B6</button>\n</div>\n<button class="fs-btn" id="fsBtn" onclick="toggleFullscreen()" title="全画面">\u26F6</button>\n<script>\nvar currentSlide=0,totalSlides=' + totalSlides + ',track=document.querySelector(\'.slides-track\'),prevBtn=document.getElementById(\'prevBtn\'),nextBtn=document.getElementById(\'nextBtn\'),pageNum=document.getElementById(\'pageNum\');\nfunction updateTransform(){if(window.innerWidth<1280){var sf=window.innerWidth/1280,tx=(window.innerWidth-1280*sf)/2-currentSlide*1280*sf;track.style.transformOrigin=\'0 0\';track.style.transform=\'translateX(\'+tx+\'px) scale(\'+sf+\')\';}else{track.style.transformOrigin=\'center center\';track.style.transform=\'translateX(\'+(-currentSlide*1280)+\'px)\';}}\nfunction goToSlide(n){if(n<0)n=0;if(n>=totalSlides)n=totalSlides-1;currentSlide=n;if(document.body.classList.contains(\'is-fullscreen\')){var sf=Math.min(window.innerWidth/1280,window.innerHeight/720);var tx=(window.innerWidth-1280*sf)/2-currentSlide*1280*sf;var ty=(window.innerHeight-720*sf)/2;track.style.transformOrigin=\'0 0\';track.style.transform=\'translate(\'+tx+\'px,\'+ty+\'px) scale(\'+sf+\')\';}else{updateTransform();}prevBtn.disabled=n===0;nextBtn.disabled=n===totalSlides-1;pageNum.textContent=(n+1)+\' / \'+totalSlides;}\nfunction toggleFullscreen(){if(!document.fullscreenElement){document.documentElement.requestFullscreen();}else{document.exitFullscreen();}}\nwindow.addEventListener(\'resize\',function(){if(document.body.classList.contains(\'is-fullscreen\')){goToSlide(currentSlide);}else{updateTransform();}});\ndocument.addEventListener(\'fullscreenchange\',function(){var btn=document.getElementById(\'fsBtn\');if(document.fullscreenElement){document.body.classList.add(\'is-fullscreen\');goToSlide(currentSlide);if(btn)btn.title=\'\u5168\u753B\u9762\u3092\u7D42\u4E86\';}else{document.body.classList.remove(\'is-fullscreen\');var slides=document.querySelectorAll(\'.slide-container\');slides.forEach(function(el,i){el.style.display=\'\';el.style.opacity=\'\';el.style.pointerEvents=\'\';el.style.position=\'\';el.style.left=\'\';el.style.top=\'\';el.style.transform=\'\';el.style.transformOrigin=\'\';el.style.zIndex=\'\';});track.style.transform=\'\';track.style.transformOrigin=\'\';updateTransform();if(btn)btn.title=\'\u5168\u753B\u9762\';}});\ndocument.addEventListener(\'keydown\',function(e){if(e.key===\'ArrowLeft\')goToSlide(currentSlide-1);if(e.key===\'ArrowRight\')goToSlide(currentSlide+1);});var sx=0;document.addEventListener(\'touchstart\',function(e){sx=e.touches[0].clientX;},{passive:true});document.addEventListener(\'touchend\',function(e){var dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>50){if(dx<0)goToSlide(currentSlide+1);else goToSlide(currentSlide-1);}});var hideTimer;function showUI(){document.body.classList.remove(\'ui-hidden\');clearTimeout(hideTimer);hideTimer=setTimeout(function(){document.body.classList.add(\'ui-hidden\');},3000);}showUI();document.addEventListener(\'mousemove\',showUI);document.addEventListener(\'click\',showUI);document.addEventListener(\'touchstart\',showUI);document.addEventListener(\'wheel\',function(e){if(e.deltaY>0)goToSlide(currentSlide+1);else if(e.deltaY<0)goToSlide(currentSlide-1);},{passive:true});\n<\/script>\n</body>\n</html>';
+                const blob = new Blob([finalHTML], { type: 'text/html;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                const title = (slides.value[0]?.title || 'presentation').replace(/[\\/:*?"<>|]/g, '');
+                link.download = title + '.html';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const renderSlideHTML = (s, idx, font, ctx) => {
+                const MAIN = ctx ? ctx.main : '#002d5e';
+                const ACCENT = ctx ? ctx.accent : '#00b0ad';
+                const F = ctx ? ctx.footer : { left:'', center:'', right:'' };
+                const FOOTER_SHOW = ctx ? ctx.footerShow : true;
+                const TOTAL = ctx ? ctx.total : 1;
+                const fText = (tpl) => String(tpl || '').replace(/\{page\}/g, idx + 1).replace(/\{total\}/g, TOTAL);
+                const logoHTML = '';
+                const logoHTMLLight = '';
+                const CREDIT_TEXT = 'Created with Slibo Lite';
+                const ftr = FOOTER_SHOW ? '<div style="position:absolute;bottom:24px;left:24px;right:24px;display:grid;grid-template-columns:1fr auto 1fr;font-size:14px;color:#94a3b8;"><div style="text-align:left;">' + esc(fText(F.left)) + '</div><div style="text-align:center;">' + esc(fText(F.center)) + '</div><div style="text-align:right;display:flex;align-items:center;gap:12px;justify-content:flex-end;"><span style="font-size:12pt;color:#555555;font-weight:700;">' + CREDIT_TEXT + '</span>' + esc(fText(F.right)) + '</div></div>' : '';
+                const ftrWhite = ftr.replace('color:#94a3b8', 'color:rgba(255,255,255,0.75)').replace('color:#555555', 'color:rgba(255,255,255,0.55)');
+                const baseStyle = 'width:1280px; height:720px; background:white; margin:0 20px; flex-shrink:0; position:relative; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.1); box-sizing:border-box; font-family:' + font + ';';
+
+                const imagesHTML = (s.images || []).map(img =>
+                    '<img src="' + img.dataUrl + '" style="position:absolute;left:' + img.x + 'px;top:' + img.y + 'px;width:' + img.w + 'px;height:' + img.h + 'px;object-fit:contain;">'
+                ).join('');
+
+                if (s.layout === 'cover') {
+                    return '<div class="slide-container" style="' + baseStyle + ' background:linear-gradient(135deg,' + MAIN + ' 0%,' + ACCENT + ' 100%); color:white; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:80px;"><div style="font-size:72px;font-weight:700;margin-bottom:24px;line-height:1.2;text-align:center;white-space:pre-wrap;">' + esc(s.title || 'メインタイトル') + '</div><div style="font-size:28px;opacity:.85;">' + esc(s.subtitle || 'サブタイトル') + '</div>' + imagesHTML + logoHTMLLight + ftrWhite + '</div>';
+                }
+                if (s.layout === 'two-column') {
+                    const lis = s.leftItems.filter(x=>x.trim()).map(x => '<div style="font-size:20px;color:#334155;margin-bottom:10px;padding-left:18px;position:relative;"><span style="color:' + ACCENT + ';position:absolute;left:0;">■</span>' + esc(x) + '</div>').join('');
+                    const ris = s.rightItems.filter(x=>x.trim()).map(x => '<div style="font-size:20px;color:#334155;margin-bottom:10px;padding-left:18px;position:relative;"><span style="color:' + ACCENT + ';position:absolute;left:0;">■</span>' + esc(x) + '</div>').join('');
+                    return '<div class="slide-container" style="' + baseStyle + ' padding:60px 80px; display:flex; flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:' + MAIN + ';border-left:10px solid ' + ACCENT + ';padding-left:20px;margin:0 0 30px 0;">' + esc(s.title || 'タイトル') + '</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;flex-grow:1;"><div style="background:#f8fafc;border-top:6px solid ' + ACCENT + ';padding:24px;"><h3 style="font-size:26px;font-weight:700;color:' + MAIN + ';margin:0 0 16px 0;">' + esc(s.leftTitle || '左') + '</h3>' + lis + '</div><div style="background:#f8fafc;border-top:6px solid ' + ACCENT + ';padding:24px;"><h3 style="font-size:26px;font-weight:700;color:' + MAIN + ';margin:0 0 16px 0;">' + esc(s.rightTitle || '右') + '</h3>' + ris + '</div></div>' + imagesHTML + logoHTML + ftr + '</div>';
+                }
+                if (s.layout === 'section') {
+                    return '<div class="slide-container" style="' + baseStyle + ' background:' + MAIN + '; color:white; padding:100px; display:flex; flex-direction:column; justify-content:center;"><div style="font-size:28px;color:' + ACCENT + ';font-weight:700;letter-spacing:4px;margin-bottom:16px;">' + esc(s.subtitle || 'SECTION 01') + '</div><div style="font-size:64px;font-weight:700;line-height:1.2;white-space:pre-wrap;">' + esc(s.title || 'タイトル') + '</div><div style="width:120px;height:6px;background:' + ACCENT + ';margin-top:32px;"></div>' + imagesHTML + logoHTMLLight + ftrWhite + '</div>';
+                }
+                if (s.layout === 'table') {
+                    const headers = s.tableHeaders.map(h => '<th style="border:1px solid #cbd5e1;padding:12px;background:' + MAIN + ';color:white;font-size:20px;text-align:left;">' + esc(h || '見出し') + '</th>').join('');
+                    const rows = s.tableRows.map((row, ri) => {
+                        const bg = ri % 2 === 0 ? 'white' : '#f8fafc';
+                        const cells = row.map(c => '<td style="border:1px solid #cbd5e1;padding:10px;font-size:18px;color:#334155;background:' + bg + ';">' + esc(c) + '</td>').join('');
+                        return '<tr>' + cells + '</tr>';
+                    }).join('');
+                    return '<div class="slide-container" style="' + baseStyle + ' padding:60px 80px; display:flex; flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:' + MAIN + ';border-left:10px solid ' + ACCENT + ';padding-left:20px;margin:0 0 30px 0;">' + esc(s.title || 'タイトル') + '</h2><div style="flex-grow:1;"><table style="width:100%;border-collapse:collapse;"><thead><tr>' + headers + '</tr></thead><tbody>' + rows + '</tbody></table></div>' + imagesHTML + logoHTML + ftr + '</div>';
+                }
+                if (s.layout === 'numbered-list') {
+                    const items = s.items.filter(x=>x.trim()).map((item,i) => '<div style="font-size:28px;margin-bottom:18px;display:flex;align-items:center;color:#334155;"><span style="color:'+ACCENT+';font-weight:bold;margin-right:40px;font-size:56px;width:60px;text-align:center;line-height:1;font-variant-numeric:tabular-nums;font-family:\'BIZ UDゴシック\',\'Courier New\',monospace;">0'+(i+1)+'</span>'+esc(item)+'</div>').join('');
+                    return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:'+MAIN+';border-left:10px solid '+ACCENT+';padding-left:20px;margin:0 0 30px 0;">'+esc(s.title||'タイトル')+'</h2><div style="flex-grow:1;display:flex;flex-direction:column;justify-content:center;">'+items+'</div>'+imagesHTML+logoHTML+ftr+'</div>';
+                }
+                if (s.layout === 'centered') {
+                    return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;"><div style="font-size:48px;color:'+MAIN+';font-weight:700;line-height:1.4;max-width:900px;">'+esc(s.body||'テキストを入力')+'</div><div style="font-size:24px;color:#64748b;margin-top:24px;">'+esc(s.subtitle||'')+'</div>'+imagesHTML+logoHTML+ftr+'</div>';
+                }
+                if (s.layout === 'closing') {
+                    const contacts = (s.items||[]).filter(x=>x.trim()).map(x => '<div style="font-size:20px;opacity:0.7;margin-bottom:6px;">'+esc(x)+'</div>').join('');
+                    return '<div class="slide-container" style="'+baseStyle+' background:linear-gradient(135deg,'+MAIN+' 0%,#1a1a2e 100%);color:white;padding:60px 80px;border-radius:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;"><div style="font-size:64px;font-weight:700;margin-bottom:16px;">'+esc(s.body||'ありがとうございました')+'</div><div style="font-size:28px;opacity:0.85;margin-bottom:32px;">'+esc(s.subtitle||'')+'</div>'+contacts+imagesHTML+logoHTMLLight+'<div style="position:absolute;bottom:24px;left:24px;right:24px;display:grid;grid-template-columns:1fr auto 1fr;font-size:14px;color:rgba(255,255,255,0.75);"><div style="text-align:left;">'+esc(fText(F.left))+'</div><div style="text-align:center;">'+esc(fText(F.center))+'</div><div style="text-align:right;display:flex;align-items:center;gap:12px;justify-content:flex-end;"><span style="font-size:12pt;color:rgba(255,255,255,0.55);font-weight:700;">'+CREDIT_TEXT+'</span>'+esc(fText(F.right))+'</div></div></div>';
+                }
+                if (s.layout === 'agenda') {
+                    const entries = (s.agEntries||[]).filter(e=>e.t||e.tp).map(e => '<div style="display:flex;gap:16px;align-items:center;padding:8px 0;border-bottom:1px solid #e2e8f0;"><div style="font-size:20px;font-weight:700;color:'+ACCENT+';min-width:80px;">'+esc(e.t||'')+'</div><div style="font-size:22px;color:#334155;">'+esc(e.tp||'')+'</div></div>').join('');
+                    return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:'+MAIN+';border-left:10px solid '+ACCENT+';padding-left:20px;margin:0 0 30px 0;">'+esc(s.title||'アジェンダ')+'</h2><div style="flex-grow:1;display:flex;flex-direction:column;justify-content:center;">'+entries+'</div>'+imagesHTML+logoHTML+ftr+'</div>';
+                }
+                return '<div class="slide-container" style="' + baseStyle + ' padding:60px 80px; display:flex; flex-direction:column;"><h2 style="font-size:42px; font-weight:bold; color:' + MAIN + '; border-left:10px solid ' + ACCENT + '; padding-left:20px; margin:0 0 30px 0;">' + esc(s.title || '') + '</h2><div style="flex-grow:1; display:flex; flex-direction:column; justify-content:center;"></div>' + imagesHTML + logoHTML + ftr + '</div>';
+            };
+
+            const renderSlideThumb = (s, idx) => {
+                const html = renderSlideHTML(s, idx, globalFont.value, {
+                    font: globalFont.value, main: globalMainColor.value,
+                    accent: globalAccentColor.value, footer: footer.value, footerShow: footerShow.value, total: slides.value.length
+                });
+                return '<div class="thumb-scale">' + html + '</div>';
+            };
+
+            const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+
+            // ===== PPTX Export =====
+            const exportPPTX = () => {
+                const pptx = new PptxGenJS();
+                pptx.layout = 'LAYOUT_WIDE';
+                const fontFace = (fontOptions.find(f => f.value === globalFont.value) || fontOptions[0]).pptx;
+                const MAIN = (globalMainColor.value || '#002d5e').replace('#','');
+                const ACCENT = (globalAccentColor.value || '#00b0ad').replace('#','');
+                const TEXT_WATERMARK = 'Created with Slibo Lite';
+                const F = footer.value;
+                const TOTAL = slides.value.length;
+                const fT = (tpl, idx) => String(tpl || '').replace(/\{page\}/g, idx + 1).replace(/\{total\}/g, TOTAL);
+                const addFooter = (slide, idx, dark) => {
+                    if (!footerShow.value) return;
+                    const color = dark ? 'FFFFFF' : '94a3b8';
+                    slide.addText(fT(F.left, idx),   { x: 0.5, y: 7.05, w: 4.0, h: 0.35, fontSize: 10, color, fontFace, align: 'left' });
+                    slide.addText(fT(F.center, idx), { x: 4.5, y: 7.05, w: 3.5, h: 0.35, fontSize: 10, color, fontFace, align: 'center' });
+                    slide.addText(TEXT_WATERMARK, { x: 8.0, y: 7.05, w: 2.5, h: 0.35, fontSize: 12, color: '555555', fontFace, align: 'right', bold: true });
+                    slide.addText(fT(F.right, idx),  { x: 10.5, y: 7.05, w: 2.8, h: 0.35, fontSize: 10, color, fontFace, align: 'right' });
+                };
+                const addImages = (slide, images) => {
+                    (images || []).forEach(img => {
+                        try {
+                            slide.addImage({ data: img.dataUrl, x: img.x / 96, y: img.y / 96, w: img.w / 96, h: img.h / 96 });
+                        } catch(e) { console.warn('Image export failed:', e); }
+                    });
+                };
+
+                slides.value.forEach((s, idx) => {
+                    const slide = pptx.addSlide();
+
+                    if (s.layout === 'cover') {
+                        slide.background = { color: MAIN };
+                        slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 7.5, fill: { type: 'solid', color: ACCENT, transparency: 70 } });
+                        slide.addText(s.title || 'タイトル', { x: 0.5, y: 2.0, w: 12.3, h: 2.8, fontSize: 56, color: 'FFFFFF', bold: true, align: 'center', fontFace, valign: 'middle' });
+                        slide.addText(s.subtitle || '', { x: 0.5, y: 4.4, w: 12.3, h: 0.8, fontSize: 22, color: 'FFFFFF', align: 'center', fontFace });
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, true);
+                    } else if (s.layout === 'two-column') {
+                        slide.addText(s.title || 'タイトル', { x: 0.6, y: 0.4, w: 12, h: 0.8, fontSize: 30, color: MAIN, bold: true, fontFace });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.4, y: 0.4, w: 0.08, h: 0.8, fill: { color: ACCENT } });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.5, y: 1.6, w: 6.1, h: 5.4, fill: { color: 'f8fafc' }, line: { color: 'f8fafc' } });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.5, y: 1.6, w: 6.1, h: 0.12, fill: { color: ACCENT }, line: { color: ACCENT } });
+                        slide.addText(s.leftTitle || '左', { x: 0.7, y: 1.85, w: 5.7, h: 0.5, fontSize: 22, bold: true, color: MAIN, fontFace });
+                        s.leftItems.filter(x=>x.trim()).forEach((it,i)=> slide.addText('■ '+it, { x: 0.8, y: 2.5 + i*0.5, w: 5.6, h: 0.45, fontSize: 16, color: '334155', fontFace }));
+                        slide.addShape(pptx.ShapeType.rect, { x: 6.7, y: 1.6, w: 6.1, h: 5.4, fill: { color: 'f8fafc' }, line: { color: 'f8fafc' } });
+                        slide.addShape(pptx.ShapeType.rect, { x: 6.7, y: 1.6, w: 6.1, h: 0.12, fill: { color: ACCENT }, line: { color: ACCENT } });
+                        slide.addText(s.rightTitle || '右', { x: 6.9, y: 1.85, w: 5.7, h: 0.5, fontSize: 22, bold: true, color: MAIN, fontFace });
+                        s.rightItems.filter(x=>x.trim()).forEach((it,i)=> slide.addText('■ '+it, { x: 7.0, y: 2.5 + i*0.5, w: 5.6, h: 0.45, fontSize: 16, color: '334155', fontFace }));
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, false);
+                    } else if (s.layout === 'section') {
+                        slide.background = { color: MAIN };
+                        slide.addText(s.subtitle || 'SECTION', { x: 1.0, y: 2.8, w: 11.3, h: 0.6, fontSize: 22, color: ACCENT, bold: true, charSpacing: 4, fontFace });
+                        slide.addText(s.title || 'タイトル', { x: 1.0, y: 3.0, w: 11.3, h: 2.2, fontSize: 50, color: 'FFFFFF', bold: true, fontFace, valign: 'middle' });
+                        slide.addShape(pptx.ShapeType.rect, { x: 1.0, y: 5.1, w: 1.3, h: 0.08, fill: { color: ACCENT }, line: { color: ACCENT } });
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, true);
+                    } else if (s.layout === 'table') {
+                        slide.addText(s.title || 'タイトル', { x: 0.6, y: 0.4, w: 12, h: 0.8, fontSize: 30, color: MAIN, bold: true, fontFace });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.4, y: 0.4, w: 0.08, h: 0.8, fill: { color: ACCENT } });
+                        const headerRow = s.tableHeaders.map(h => ({ text: h || '見出し', options: { bold: true, color: 'FFFFFF', fill: { color: MAIN }, fontSize: 14, fontFace, align: 'center' } }));
+                        const dataRows = s.tableRows.filter(r => r.some(c => c.trim())).map(row =>
+                            row.map(c => ({ text: c, options: { fontSize: 13, color: '334155', fontFace, align: 'center' } }))
+                        );
+                        const pptxRows = [headerRow, ...dataRows];
+                        const colCount = s.tableHeaders.length || 3;
+                        slide.addTable(pptxRows, { x: 0.5, y: 1.5, w: 12.3, colW: Array(colCount).fill(12.3 / colCount), border: { type: 'solid', pt: 0.5, color: 'CBD5E1' }, rowH: 0.45 });
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, false);
+                    } else if (s.layout === 'numbered-list') {
+                        slide.addText(s.title || 'タイトル', { x: 0.6, y: 0.6, w: 12, h: 0.8, fontSize: 32, color: MAIN, bold: true, fontFace });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.4, y: 0.6, w: 0.08, h: 0.8, fill: { color: ACCENT } });
+                        (s.items||[]).filter(x=>x.trim()).forEach((item, i) => {
+                            slide.addText('0'+(i+1), { x: 0.6, y: 1.7 + i*0.8, w: 0.6, fontSize: 36, color: ACCENT, bold: true, fontFace: 'Arial' });
+                            slide.addText(item, { x: 1.6, y: 1.8 + i*0.8, w: 10.5, fontSize: 20, color: '334155', fontFace });
+                        });
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, false);
+                    } else if (s.layout === 'centered') {
+                        slide.background = { color: 'FFFFFF' };
+                        slide.addText(s.body||'テキスト', { x: 0.5, y: 2.0, w: 12.3, h: 2.5, fontSize: 44, color: MAIN, bold: true, align: 'center', fontFace });
+                        slide.addText(s.subtitle||'', { x: 0.5, y: 4.5, w: 12.3, h: 1.0, fontSize: 22, color: '64748b', align: 'center', fontFace });
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, false);
+                    } else if (s.layout === 'closing') {
+                        slide.background = { color: MAIN };
+                        slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 7.5, fill: { type: 'solid', color: '1a1a2e', transparency: 40 } });
+                        slide.addText(s.body||'ありがとうございました', { x: 0.5, y: 2.0, w: 12.3, h: 1.5, fontSize: 48, color: 'FFFFFF', bold: true, align: 'center', fontFace });
+                        slide.addText(s.subtitle||'', { x: 0.5, y: 3.6, w: 12.3, h: 0.8, fontSize: 24, color: 'FFFFFF', align: 'center', fontFace });
+                        (s.items||[]).filter(x=>x.trim()).forEach((it, i) => {
+                            slide.addText(it, { x: 0.5, y: 4.7 + i*0.5, w: 12.3, h: 0.45, fontSize: 16, color: 'FFFFFF', align: 'center', fontFace });
+                        });
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, true);
+                    } else if (s.layout === 'agenda') {
+                        slide.addText(s.title || 'アジェンダ', { x: 0.6, y: 0.4, w: 12, h: 0.8, fontSize: 30, color: MAIN, bold: true, fontFace });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.4, y: 0.4, w: 0.08, h: 0.8, fill: { color: ACCENT } });
+                        (s.agEntries||[]).filter(e=>e.t||e.tp).forEach((e, i) => {
+                            slide.addText(e.t||'', { x: 0.6, y: 1.8 + i*1.0, w: 1.8, h: 0.5, fontSize: 16, color: ACCENT, bold: true, fontFace });
+                            slide.addText(e.tp||'', { x: 2.6, y: 1.8 + i*1.0, w: 9.5, h: 0.5, fontSize: 18, color: '334155', fontFace });
+                        });
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, false);
+                    }
+                });
+
+                const titleSanitized = esc(slides.value[0]?.title || 'Presentation').replace(/[<>:"\/\\|?*]/g, '').trim() || 'Presentation';
+                pptx.writeFile({ fileName: titleSanitized + '.pptx' });
+            };
+
+            onMounted(() => {
+                aiModalOpen.value = false;
+                lucide.createIcons();
+                loadSettings();
+                loadAutoSave();
+                // Show welcome tutorial prompt on first visit
+                try { if (!localStorage.getItem('slibo_tutorial_done')) tutorialWelcome.value = true; } catch (e) {}
+                // Capture initial state
+                pushHistory();
+
+                const ro = new ResizeObserver(() => updateScale());
+                if (previewStage.value) ro.observe(previewStage.value);
+
+                // Mouse events
+                window.addEventListener('resize', updateScale);
+                window.addEventListener('resize', checkMobile);
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('mouseup', endDrag);
+                window.addEventListener('mousemove', onImageDragMove);
+                window.addEventListener('mouseup', stopImageDrag);
+                window.addEventListener('mousemove', onResizeMove);
+                window.addEventListener('mouseup', stopResize);
+
+                // Touch events for splitter
+                window.addEventListener('touchmove', onMove, { passive: false });
+                window.addEventListener('touchend', endDrag);
+
+                // Mobile edge swipe
+                document.addEventListener('touchstart', onSwipeStart, { passive: true });
+                document.addEventListener('touchend', onSwipeEnd, { passive: true });
+
+                // Slide swipe (page navigation)
+                document.addEventListener('touchstart', onSlideSwipeStartDoc, { passive: true });
+                document.addEventListener('touchend', onSlideSwipeEndDoc, { passive: true });
+
+                // Keyboard shortcuts
+                window.addEventListener('keydown', (e) => {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || (e.target.isContentEditable)) return;
+                    const ctrl = e.ctrlKey || e.metaKey;
+                    const alt = e.altKey;
+                    const shift = e.shiftKey;
+                    const key = e.key;
+
+                    if (ctrl && !alt) {
+                        if (key === 'z' && !shift) { e.preventDefault(); undo(); return; }
+                        if ((key === 'z' && shift) || (key === 'y' && !shift)) { e.preventDefault(); redo(); return; }
+                        if (key === 'd' && !shift) { e.preventDefault(); duplicateSlide(currentSlideIndex.value); return; }
+                        if (key === 'm' && !shift) { e.preventDefault(); addSlide(); return; }
+                    }
+
+                    if (alt && !ctrl && (key === 'ArrowUp' || key === 'ArrowDown')) {
+                        e.preventDefault();
+                        const from = currentSlideIndex.value;
+                        const to = key === 'ArrowUp' ? Math.max(0, from - 1) : Math.min(slides.value.length - 1, from + 1);
+                        moveSlide(from, to);
+                        return;
+                    }
+
+                    if (!ctrl && !alt) {
+                        if (key === 'ArrowUp' && currentSlideIndex.value > 0) { e.preventDefault(); changeSlide(currentSlideIndex.value - 1); return; }
+                        if (key === 'ArrowDown' && currentSlideIndex.value < slides.value.length - 1) { e.preventDefault(); changeSlide(currentSlideIndex.value + 1); return; }
+                        if (key === 'Delete' || key === 'Backspace') {
+                            if (slides.value.length > 1) { e.preventDefault(); deleteSlide(currentSlideIndex.value); }
+                            return;
+                        }
+                        if (key === '?') { e.preventDefault(); showWelcome(); return; }
+                        if (key === 'Escape') {
+                            tutorialWelcome.value = false;
+                            tutorialStep.value = 0;
+                            aiModalOpen.value = false;
+                            settingsOpen.value = false;
+                            overallPreviewOpen.value = false;
+                            exportDropdownOpen.value = false;
+                            layoutCollapsed.value = true;
+                            return;
+                        }
+                    }
+                });
+
+                // Paste image from clipboard
+                document.addEventListener('paste', onDocumentPaste);
+                document.addEventListener('dragover', onDocumentDragOver);
+                document.addEventListener('drop', onDocumentDrop);
+
+                // Dropdown outside click
+                document.addEventListener('click', closeDropdowns);
+
+                nextTick(updateScale);
+            });
+            onUnmounted(() => {
+                document.removeEventListener('paste', onDocumentPaste);
+                document.removeEventListener('dragover', onDocumentDragOver);
+                document.removeEventListener('drop', onDocumentDrop);
+                document.removeEventListener('click', closeDropdowns);
+                document.removeEventListener('touchstart', onSwipeStart);
+                document.removeEventListener('touchend', onSwipeEnd);
+                document.removeEventListener('touchstart', onSlideSwipeStartDoc);
+                document.removeEventListener('touchend', onSlideSwipeEndDoc);
+            });
+
+            // Watch for slide/layout changes
+            watch([slides, currentSlideIndex], () => {
+                nextTick(() => { lucide.createIcons(); updateScale(); });
+                nextTick(() => {
+                    const container = document.querySelector('.app-sidebar .overflow-y-auto');
+                    if (container) {
+                        const el = container.children[currentSlideIndex.value];
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                });
+            }, { deep: true });
+
+            return {
+                slides, currentSlideIndex, currentSlide,
+                changeSlide, addSlide, deleteSlide,
+                exportHTML, exportPPTX,
+                fontOptions, globalFont,
+                layoutOptions, changeLayout, layoutIcon, layoutLabel, slideHeadline, layoutCollapsed,
+                editorWidth, editorHeight, layoutOrientation, toggleOrientation, editorPane, previewStage, slideEl,
+                startDrag, startDragTouch,
+                globalMainColor, globalAccentColor, colorThemes, currentColorTheme, onColorThemeChange,
+                footer, footerShow, footerText,
+
+                // Undo/Redo
+                historyStack, redoStack, undo, redo, scheduleHistory,
+                loadSampleDeck, loadEmptyDeck,
+                defaultLayout, maxHistory,
+
+                // Duplicate/Reorder
+                duplicateSlide, moveSlide, onDragStart, onDragEnd, onDragOver, onDrop,
+                // Templates
+                slideTemplates, applyTemplate,
+                // Table
+                addItem, removeItem, addTableRow, removeTableRow,
+                // Images
+                imageInput, triggerImageUpload, onImageSelected, removeImage,
+                selectedImageIndex, startImageDrag, startImageDragTouch,
+                onImageDragMove, onTouchImageDragMove, stopImageDrag,
+                startResize, startResizeTouch,
+                // Preview wheel
+                onPreviewWheel,
+                // Mobile
+                isMobile, mobileSidebarOpen, hamburgerOpen, hamburgerRef,
+                mobileExportOpen, mobileExportRef,
+                // UI Theme
+                uiThemes, currentUiTheme, settingsOpen,
+                overallPreviewOpen, renderSlideThumb,
+                exportDropdownOpen, closeDropdowns, exportRef,
+                // AIでつくる
+                aiModalOpen, aiJSONInput, aiPromptText,
+                copyAIPrompt, formatAIJSON, applyAIDeck, buildAIPrompt,
+                tutorialStep, tutorialSteps, holeRect, tooltipPos, winSize, tutorialWelcome,
+                startTutorial, endTutorial, nextTutorialStep, prevTutorialStep, dismissWelcome, showWelcome,
+                modalState, closeModal,
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
