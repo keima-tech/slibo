@@ -2512,7 +2512,7 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
 
                     if (s.layout === 'cover') {
                         slide.background = { color: MAIN };
-                        slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 7.5, fill: { type: 'solid', color: ACCENT, transparency: 70 } });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 7.5, fill: { type: 'solid', color: ACCENT, transparency: 50 } });
                         slide.addText(s.title || 'タイトル', { x: 0.5, y: 2.0, w: 12.3, h: 2.8, fontSize: 56, color: 'FFFFFF', bold: true, align: 'center', fontFace, valign: 'middle' });
                         slide.addText(s.subtitle || '', { x: 0.5, y: 4.4, w: 12.3, h: 0.8, fontSize: 22, color: 'FFFFFF', align: 'center', fontFace });
                         addImages(slide, s.images);
