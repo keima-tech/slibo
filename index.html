@@ -119,7 +119,7 @@
 
         /* ナンバリング */
         .layout-numbered-list .s-item { font-size: 28px; margin-bottom: 18px; display: flex; align-items: center; color: #334155; }
-        .layout-numbered-list .s-item span.num-lg { color: var(--accent-color); font-weight: bold; margin-right: 40px; font-size: 56px; width: 60px; text-align: center; line-height: 1; font-family: 'BIZ UDゴシック', 'Courier New', monospace; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+        .layout-numbered-list .s-item span.num-lg { color: var(--accent-color); font-weight: bold; margin-right: 40px; font-size: 48px; width: 80px; text-align: center; line-height: 1; font-family: 'BIZ UDゴシック', 'Courier New', monospace; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
         /* 中央テキスト */
         .layout-centered { justify-content: center; align-items: center; text-align: center; flex-grow: 1; display: flex; flex-direction: column; }
@@ -136,9 +136,39 @@
         .layout-agenda { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
         .layout-agenda .ag-item { display: flex; gap: 16px; align-items: center; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
         .layout-agenda .ag-item:last-child { border-bottom: none; }
-        .layout-agenda .ag-time { font-size: 20px; font-weight: 700; color: var(--accent-color); min-width: 80px; }
-        .layout-agenda .ag-topic { font-size: 22px; color: #334155; }
+        .layout-agenda .ag-time { font-size: 24px; font-weight: 700; color: var(--accent-color); min-width: 100px; }
+        .layout-agenda .ag-topic { font-size: 26px; color: #334155; }
 
+        /* 比較 */
+        .layout-comparison .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; flex-grow: 1; }
+        .layout-comparison .col { border-radius: 8px; padding: 24px; display: flex; flex-direction: column; }
+        .layout-comparison .col-a { background: #f0fdf4; border: 2px solid #86efac; }
+        .layout-comparison .col-b { background: #fef2f2; border: 2px solid #fca5a5; }
+        .layout-comparison .col h3 { font-size: 28px; font-weight: 700; text-align: center; margin-bottom: 16px; }
+        .layout-comparison .col-a h3 { color: #16a34a; }
+        .layout-comparison .col-b h3 { color: #dc2626; }
+        .layout-comparison .col .cf { font-size: 20px; margin-bottom: 10px; padding-left: 20px; position: relative; }
+        .layout-comparison .col .cf::before { content: "\25B8"; position: absolute; left: 0; color: #94a3b8; }
+        /* 統計 */
+        .layout-stats { flex-grow: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .layout-stats .stat { background: #f8fafc; border-radius: 8px; padding: 20px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        .layout-stats .stat .s-num { font-size: 48px; font-weight: 700; color: var(--accent-color); line-height: 1.1; }
+        .layout-stats .stat .s-label { font-size: 18px; color: #64748b; margin-top: 8px; }
+        /* グラフ共通 */
+        .layout-chart { flex-grow: 1; display: flex; gap: 32px; }
+        .layout-chart .chart-area { flex: 3; display: flex; align-items: center; justify-content: center; min-width: 0; }
+        .layout-chart .chart-area svg { width: 100%; max-width: 480px; height: auto; }
+        .layout-chart .insight-area { flex: 2; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+        .layout-chart .insight-area .in-item { display: flex; gap: 12px; align-items: flex-start; }
+        .layout-chart .insight-area .in-dot { width: 10px; height: 10px; background: var(--accent-color); border-radius: 50%; margin-top: 8px; flex-shrink: 0; }
+        .layout-chart .insight-area .in-text { font-size: 18px; color: #334155; line-height: 1.5; }
+        /* プロセスフロー */
+        .layout-process { flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 20px 0; }
+        .layout-process .p-step { display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; position: relative; padding: 0 8px; }
+        .layout-process .p-step .p-num { width: 52px; height: 52px; background: var(--accent-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; margin-bottom: 10px; flex-shrink: 0; }
+        .layout-process .p-step .p-label { font-size: 20px; font-weight: 700; color: var(--main-color); margin-bottom: 4px; }
+        .layout-process .p-step .p-desc { font-size: 14px; color: #64748b; line-height: 1.3; }
+        .layout-process .p-arrow { font-size: 28px; color: var(--accent-color); flex-shrink: 0; margin: 0 4px; margin-top: -26px; }
         .overall-thumb-inner { width: 100%; aspect-ratio: 16/9; background: white; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .thumb-scale { transform: scale(0.18); transform-origin: center center; }
 
@@ -691,6 +721,105 @@
                             <i data-lucide="plus" class="w-3 h-3"></i> 項目を追加
                         </button>
                     </template>
+                    <!-- 比較 -->
+                    <template v-else-if="currentSlide.layout === 'comparison'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">スライドタイトル</label>
+                            <input v-model="currentSlide.title" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：A案 vs B案">
+                        </div>
+                        <div class="space-y-2">
+                            <div class="border border-green-200 p-2 rounded bg-green-50">
+                                <label class="block text-xs font-medium text-green-700 mb-1">左ラベル（A案）</label>
+                                <input v-model="currentSlide.leftLabel" @input="scheduleHistory" type="text" class="w-full border border-green-200 p-2 rounded text-sm mb-1" placeholder="例：A案">
+                                <div v-for="(f, i) in currentSlide.leftFeatures" :key="'lf'+i" class="flex gap-1 mb-1">
+                                    <input v-model="currentSlide.leftFeatures[i]" @input="scheduleHistory" type="text" class="flex-1 border border-green-200 p-2 rounded text-xs" :placeholder="'特徴 '+(i+1)">
+                                    <button v-if="currentSlide.leftFeatures.length > 1" @click="removeItem(currentSlide.leftFeatures, i)" class="text-red-400 hover:text-red-600 shrink-0 self-center" title="この項目を削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                                </div>
+                                <button @click="addItem(currentSlide.leftFeatures, '')" class="text-xs text-green-600 hover:text-green-800 flex items-center gap-1">
+                                    <i data-lucide="plus" class="w-3 h-3"></i> 追加
+                                </button>
+                            </div>
+                            <div class="border border-red-200 p-2 rounded bg-red-50">
+                                <label class="block text-xs font-medium text-red-700 mb-1">右ラベル（B案）</label>
+                                <input v-model="currentSlide.rightLabel" @input="scheduleHistory" type="text" class="w-full border border-red-200 p-2 rounded text-sm mb-1" placeholder="例：B案">
+                                <div v-for="(f, i) in currentSlide.rightFeatures" :key="'rf'+i" class="flex gap-1 mb-1">
+                                    <input v-model="currentSlide.rightFeatures[i]" @input="scheduleHistory" type="text" class="flex-1 border border-red-200 p-2 rounded text-xs" :placeholder="'特徴 '+(i+1)">
+                                    <button v-if="currentSlide.rightFeatures.length > 1" @click="removeItem(currentSlide.rightFeatures, i)" class="text-red-400 hover:text-red-600 shrink-0 self-center" title="この項目を削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                                </div>
+                                <button @click="addItem(currentSlide.rightFeatures, '')" class="text-xs text-red-600 hover:text-red-800 flex items-center gap-1">
+                                    <i data-lucide="plus" class="w-3 h-3"></i> 追加
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                    <!-- 統計 -->
+                    <template v-else-if="currentSlide.layout === 'stats'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">スライドタイトル</label>
+                            <input v-model="currentSlide.title" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：業績ハイライト">
+                        </div>
+                        <div class="space-y-2">
+                            <div v-for="(st, i) in currentSlide.statItems" :key="'st'+i" class="border border-slate-200 p-2 rounded flex gap-2 items-start">
+                                <div class="flex-1">
+                                    <input v-model="st.n" @input="scheduleHistory" type="text" class="w-full border border-slate-200 p-2 rounded text-sm text-center mb-1" :placeholder="'数値 '+(i+1)">
+                                    <input v-model="st.l" @input="scheduleHistory" type="text" class="w-full border border-slate-200 p-2 rounded text-xs text-center" :placeholder="'ラベル '+(i+1)">
+                                </div>
+                                <button v-if="currentSlide.statItems.length > 1" @click="removeItem(currentSlide.statItems, i)" class="text-red-400 hover:text-red-600 shrink-0 mt-1" title="この項目を削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                            </div>
+                            <button @click="addItem(currentSlide.statItems, {n:'', l:''})" class="text-xs text-teal-600 hover:text-teal-800 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3 h-3"></i> 統計を追加
+                            </button>
+                        </div>
+                    </template>
+                    <!-- 棒グラフ -->
+                    <template v-else-if="currentSlide.layout === 'bar'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">スライドタイトル</label>
+                            <input v-model="currentSlide.title" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：業績サマリー">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-2">グラフデータ</label>
+                            <div v-for="(ci, i) in currentSlide.chartItems" :key="'ci'+i" class="flex gap-2 mb-2">
+                                <input v-model="ci.label" @input="scheduleHistory" type="text" class="w-1/3 border border-slate-200 p-2 rounded text-sm" placeholder="ラベル">
+                                <input v-model.number="ci.value" @input="scheduleHistory" type="number" class="w-20 border border-slate-200 p-2 rounded text-sm" placeholder="値">
+                                <button v-if="currentSlide.chartItems.length > 1" @click="removeItem(currentSlide.chartItems, i)" class="text-red-400 hover:text-red-600 shrink-0" title="この項目を削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                            </div>
+                            <button @click="addItem(currentSlide.chartItems, {label:'', value:0})" class="text-xs text-teal-600 hover:text-teal-800 mt-1 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3 h-3"></i> データを追加
+                            </button>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-2">キーインサイト</label>
+                            <div v-for="(ins, i) in currentSlide.insights" :key="'in'+i" class="flex gap-2 mb-2">
+                                <input v-model="currentSlide.insights[i]" @input="scheduleHistory" type="text" class="flex-1 border border-slate-200 p-2 rounded text-sm" :placeholder="'インサイト '+(i+1)">
+                                <button v-if="currentSlide.insights.length > 1" @click="removeItem(currentSlide.insights, i)" class="text-red-400 hover:text-red-600 shrink-0" title="この項目を削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                            </div>
+                            <button @click="addItem(currentSlide.insights, '')" class="text-xs text-teal-600 hover:text-teal-800 mt-1 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3 h-3"></i> インサイトを追加
+                            </button>
+                        </div>
+                    </template>
+                    <!-- プロセス -->
+                    <template v-else-if="currentSlide.layout === 'process'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">スライドタイトル</label>
+                            <input v-model="currentSlide.title" @input="scheduleHistory" type="text" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" placeholder="例：開発プロセス">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-2">プロセスステップ</label>
+                            <div v-for="(st, i) in currentSlide.processSteps" :key="'ps'+i" class="flex gap-2 mb-2 items-start">
+                                <div class="bg-teal-100 flex items-center justify-center w-8 h-8 rounded-full text-teal-700 font-bold text-sm shrink-0 mt-1">{{ i + 1 }}</div>
+                                <div class="flex-1 flex flex-col gap-1.5">
+                                    <input v-model="st.label" @input="scheduleHistory" type="text" class="w-full border border-slate-200 p-2 rounded text-sm" placeholder="ラベル">
+                                    <input v-model="st.desc" @input="scheduleHistory" type="text" class="w-full border border-slate-200 p-2 rounded text-sm" placeholder="説明">
+                                </div>
+                                <button v-if="currentSlide.processSteps.length > 2" @click="removeItem(currentSlide.processSteps, i)" class="text-red-400 hover:text-red-600 shrink-0 self-start mt-1" title="このステップを削除"><i data-lucide="x" class="w-3 h-3"></i></button>
+                            </div>
+                            <button @click="addItem(currentSlide.processSteps, {label:'', desc:''})" class="text-xs text-teal-600 hover:text-teal-800 mt-1 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3 h-3"></i> ステップを追加
+                            </button>
+                        </div>
+                    </template>
 
                 </div>
 
@@ -868,8 +997,63 @@
                         </div>
                         
                         <div v-if="footerShow" class="slide-footer">
-                            <div>{{ footerText(footer.left, currentSlideIndex) }}</div><div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div><div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div>
+                            <div>{{ footerText(footer.left, currentSlideIndex) }}</div><div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div>                            <div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div>
                         </div>
+                    </template>
+                    <template v-else-if="currentSlide.layout === 'comparison'">
+                        <div style="flex-grow:1;display:flex;flex-direction:column;padding:60px 80px;">
+                            <h2 class="s-title">{{ currentSlide.title || '比較' }}</h2>
+                            <div class="layout-comparison" style="width:100%;flex-grow:1;">
+                                <div class="cols">
+                                    <div class="col col-a"><h3>{{ currentSlide.leftLabel || 'A' }}</h3><div v-for="(f,i) in currentSlide.leftFeatures" :key="'lf'+i" v-show="f" class="cf">{{ f }}</div></div>
+                                    <div class="col col-b"><h3>{{ currentSlide.rightLabel || 'B' }}</h3><div v-for="(f,i) in currentSlide.rightFeatures" :key="'rf'+i" v-show="f" class="cf">{{ f }}</div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="footerShow" class="slide-footer"><div>{{ footerText(footer.left, currentSlideIndex) }}</div><div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div><div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div></div>
+                    </template>
+                    <template v-else-if="currentSlide.layout === 'stats'">
+                        <div style="flex-grow:1;display:flex;flex-direction:column;padding:60px 80px;">
+                            <h2 class="s-title">{{ currentSlide.title || '統計' }}</h2>
+                            <div class="layout-stats">
+                                <div v-for="(st, i) in currentSlide.statItems" :key="'st'+i" v-show="st.n || st.l" class="stat">
+                                    <div class="s-num">{{ st.n || '0' }}</div>
+                                    <div class="s-label">{{ st.l || '' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="footerShow" class="slide-footer"><div>{{ footerText(footer.left, currentSlideIndex) }}</div><div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div><div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div></div>
+                    </template>
+                    <template v-else-if="currentSlide.layout === 'bar'">
+                        <div style="flex-grow:1;display:flex;flex-direction:column;padding:60px 80px;">
+                            <h2 class="s-title">{{ currentSlide.title || 'グラフ' }}</h2>
+                            <div class="layout-chart">
+                                <div class="chart-area" v-html="renderChart(currentSlide)"></div>
+                                <div class="insight-area">
+                                    <div v-for="(ins, i) in currentSlide.insights" :key="'in'+i" v-show="ins" class="in-item">
+                                        <div class="in-dot"></div>
+                                        <div class="in-text">{{ ins }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="footerShow" class="slide-footer"><div>{{ footerText(footer.left, currentSlideIndex) }}</div><div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div><div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div></div>
+                    </template>
+                    <template v-else-if="currentSlide.layout === 'process'">
+                        <div style="flex-grow:1;display:flex;flex-direction:column;padding:60px 80px;">
+                            <h2 class="s-title">{{ currentSlide.title || 'プロセス' }}</h2>
+                            <div class="layout-process">
+                                <template v-for="(st, i) in currentSlide.processSteps" :key="'ps'+i">
+                                    <div v-if="i > 0" class="p-arrow">→</div>
+                                    <div class="p-step">
+                                        <div class="p-num">{{ i + 1 }}</div>
+                                        <div class="p-label">{{ st.label || '' }}</div>
+                                        <div class="p-desc">{{ st.desc || '' }}</div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div v-if="footerShow" class="slide-footer"><div>{{ footerText(footer.left, currentSlideIndex) }}</div><div class="sf-c">{{ footerText(footer.center, currentSlideIndex) }}</div><div class="sf-r">{{ footerText(footer.right, currentSlideIndex) }}</div></div>
                     </template>
 
                     <!-- アジェンダ -->
@@ -1346,13 +1530,19 @@
                 { value: 'centered',   label: '中央テキスト', icon: 'align-center' },
                 { value: 'numbered-list', label: 'ナンバリング', icon: 'list-ordered' },
                 { value: 'two-column', label: '2カラム',    icon: 'columns-2' },
+                { value: 'comparison', label: '比較',       icon: 'arrow-left-right' },
                 { value: 'table',      label: '表',         icon: 'table' },
+                { value: 'stats',      label: '統計',       icon: 'bar-chart-3' },
+                { value: 'process',    label: 'プロセス',    icon: 'arrow-right-square' },
+                { value: 'bar',        label: '棒グラフ',    icon: 'bar-chart-3' },
                 { value: 'closing',    label: 'クロージング', icon: 'square-check' },
             ];
 
             const DEFAULT_TITLES = {
                 'cover': 'タイトルを入力', 'section': 'セクションタイトル', 'numbered-list': '目次',
-                'two-column': '比較分析', 'table': 'データテーブル',
+                'two-column': '比較分析', 'comparison': '機能比較',
+                'table': 'データテーブル',
+                'stats': '主要指標', 'process': '開発プロセス', 'bar': 'グラフ',
                 'centered': 'メッセージ',
                 'closing': 'ご挨拶', 'agenda': 'アジェンダ',
             };
@@ -1367,6 +1557,16 @@
                 // v1.3 +
                 tableHeaders: ['項目', '実績', '予算'],
                 tableRows: [['売上高', '120億', '150億'], ['営業利益', '18億', '25億'], ['顧客数', '1,200', '1,500']],
+                // 比較
+                leftLabel: '従来方式', leftFeatures: ['コスト高', '処理が遅い', '運用が複雑'],
+                rightLabel: '新方式', rightFeatures: ['コスト削減', '高速処理', '運用が簡単'],
+                // 統計
+                statItems: [{n:'120%', l:'売上成長率'}, {n:'1,200', l:'顧客数'}, {n:'95%', l:'顧客満足度'}, {n:'99.9%', l:'システム稼働率'}],
+                // 棒グラフ
+                chartItems: [{label:'Q1', value:80}, {label:'Q2', value:65}, {label:'Q3', value:90}, {label:'Q4', value:75}],
+                insights: ['第2四半期に一時低下するも、第3四半期以降回復傾向', '通年では堅調な成長を維持', '新規施策の効果が第3四半期より顕在化'],
+                // プロセス
+                processSteps: [{label:'企画', desc:'要件定義'}, {label:'開発', desc:'設計・実装'}, {label:'検証', desc:'テスト・QA'}, {label:'公開', desc:'リリース・運用'}],
                 images: [],
                 // アジェンダ
                 agEntries: [{t:'項目1', tp:'オープニング'}, {t:'項目2', tp:'事業報告'}, {t:'項目3', tp:'質疑応答'}, {t:'項目4', tp:'閉会'}],
@@ -1595,10 +1795,14 @@
                 cover:     { title:'str', subtitle:'str', note:'str' },
                 'two-column': { title:'str', leftTitle:'str', leftItems:'str[]', rightTitle:'str', rightItems:'str[]', note:'str' },
                 section:   { title:'str', subtitle:'str', note:'str' },
+                comparison: { title:'str', leftLabel:'str', leftFeatures:'str[]', rightLabel:'str', rightFeatures:'str[]', note:'str' },
                 table:     { title:'str', tableHeaders:'str[]', tableRows:'str[][]', note:'str' },
+                stats:     { title:'str', statItems:'[{n,l}]', note:'str' },
                 'numbered-list': { title:'str', items:'str[]', note:'str' },
                 centered:  { title:'str', body:'str', subtitle:'str', note:'str' },
+                process:   { title:'str', processSteps:'[{label,desc}]', note:'str' },
                 closing:   { title:'str', body:'str', subtitle:'str', items:'str[]', note:'str' },
+                bar:       { title:'str', chartItems:'[{label,value}]', insights:'str[]', note:'str' },
                 agenda:    { title:'str', agEntries:'[{t,tp}]', note:'str' },
             };
             const aiSchemaDoc = () => {
@@ -1659,7 +1863,7 @@
    - 前後の説明文・Markdownコードフェンス(\`\`\`json / \`\`\`)・コメントは一切含めない
    - 必ず複数行整形（pretty print）、字下げは2スペース
    - 厳密に有効なJSONとし、[ ] { } ( ) などの記号をバックスラッシュでエスケープしない
-   - type は以下に示す9種のいずれか、data のキーはスキーマと完全一致（余計なキー追加・必須キー省略の禁止）
+    - type は以下に示す12種のいずれか、data のキーはスキーマと完全一致（余計なキー追加・必須キー省略の禁止）
    - image は常に空文字列 ""
    - 各スライドには必ずスピーカーノート "note" を付ける（dataと同じ階層）。発表内容を1〜3文の自然な日本語（話し言葉）で記述し、背景説明・数字の解釈・聴衆への補足を含める
    - **Markdownの表組み・見出し・箇条書き・太字・HTMLタグは一切使わない**
@@ -1677,7 +1881,7 @@ ${paletteNames}
 - "BIZ UDGothic"
 - "Yu Gothic"
 
-## 各レイアウトのdataスキーマ（9種）
+## 各レイアウトのdataスキーマ（12種）
 ${schemaLines.join('\n\n')}
 
 ## 推奨構成
@@ -1854,9 +2058,13 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
                 Object.assign(makeSlide('cover'), { title: '新サービスの事業計画', subtitle: '2026年度 事業戦略発表会' }),
                 Object.assign(makeSlide('agenda'), { title: '本日のアジェンダ', agEntries: [{t:'項目1', tp:'オープニング'}, {t:'項目2', tp:'事業報告'}, {t:'項目3', tp:'質疑応答'}, {t:'項目4', tp:'閉会'}] }),
                 Object.assign(makeSlide('section'), { subtitle: '目次', title: '事業概要' }),
+                Object.assign(makeSlide('stats'), { title: '主要指標', statItems: [{n:'120%', l:'売上成長率（前年比）'}, {n:'1,200', l:'累計顧客数'}, {n:'95%', l:'顧客満足度'}, {n:'50+', l:'提携パートナー数'}] }),
                 Object.assign(makeSlide('two-column'), { title: '強みと課題', leftTitle: '強み', leftItems: ['高い技術力', '豊富な実績', '優秀な人材'], rightTitle: '課題', rightItems: ['市場認知度向上', 'リソース不足の解消', '業務効率化の推進'] }),
+                Object.assign(makeSlide('comparison'), { title: '機能比較', leftLabel: '従来システム', leftFeatures: ['オンプレミス運用', '手動レポート作成', '週次バッチ処理'], rightLabel: '新システム', rightFeatures: ['クラウドネイティブ', 'リアルタイム分析', '自動化ワークフロー'] }),
                 Object.assign(makeSlide('numbered-list'), { title: '重点施策', items: ['デジタル化推進', '人材育成プログラム', '新規市場開拓', '業務効率化'] }),
-                Object.assign(makeSlide('table'), { title: '業績比較', tableHeaders: ['項目', '実績', '予算'], tableRows: [['売上高', '120億', '150億'], ['営業利益', '18億', '25億'], ['顧客数', '1,200', '1,500']] }),
+                Object.assign(makeSlide('bar'), { title: '四半期売上推移', chartItems: [{label:'Q1', value:80}, {label:'Q2', value:65}, {label:'Q3', value:90}, {label:'Q4', value:110}], insights: ['Q2に一時低下するも、Q3以降V字回復', '新規施策の効果がQ3より顕在化', '通年では前期比25%増を達成見込み'] }),
+                Object.assign(makeSlide('table'), { title: '業績サマリー', tableHeaders: ['項目', '実績', '予算', '達成率'], tableRows: [['売上高', '120億', '150億', '80%'], ['営業利益', '18億', '25億', '72%'], ['顧客数', '1,200', '1,500', '80%'], ['満足度', '95%', '90%', '106%']] }),
+                Object.assign(makeSlide('process'), { title: 'ロードマップ', processSteps: [{label:'Phase 1', desc:'要件定義・設計'}, {label:'Phase 2', desc:'プロトタイプ開発'}, {label:'Phase 3', desc:'検証・テスト'}, {label:'Phase 4', desc:'本番リリース'}] }),
                 Object.assign(makeSlide('centered'), { title: 'メッセージ', body: '変革は、今ここから。', subtitle: '— 経営戦略レポート 2026' }),
                 Object.assign(makeSlide('closing'), { body: 'ご清聴ありがとうございました', subtitle: '経営企画部', items: ['Email: contact@example.com', 'Tel: 03-xxxx-xxxx'] }),
             ];
@@ -1915,57 +2123,6 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
                 };
                 reader.readAsDataURL(f);
                 e.target.value = '';
-            };
-            const readImageFile = (file) => {
-                if (!file.type.startsWith('image/')) return;
-                if (file.size > 5 * 1024 * 1024) { showAlert('画像サイズは5MB以下にしてください'); return; }
-                const reader = new FileReader();
-                reader.onload = () => {
-                    pushHistory();
-                    currentSlide.value.images.push({
-                        dataUrl: reader.result,
-                        x: 100, y: 200, w: 300, h: 200,
-                    });
-                    selectedImageIndex.value = currentSlide.value.images.length - 1;
-                    nextTick(() => updateScale());
-                };
-                reader.readAsDataURL(file);
-            };
-            const onDocumentPaste = (e) => {
-                const tag = e.target?.tagName;
-                if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable) return;
-                const items = e.clipboardData?.items;
-                if (!items) return;
-                for (const item of items) {
-                    if (item.type.startsWith('image/')) {
-                        const file = item.getAsFile();
-                        if (file) readImageFile(file);
-                        break;
-                    }
-                }
-            };
-            const onDocumentDragOver = (e) => {
-                if (previewStage.value && previewStage.value.contains(e.target)) {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'copy';
-                }
-            };
-            const onDocumentDrop = (e) => {
-                if (!previewStage.value || !previewStage.value.contains(e.target)) return;
-                e.preventDefault();
-                const dt = e.dataTransfer;
-                if (!dt) return;
-                let file = null;
-                if (dt.files?.length > 0) {
-                    for (const f of dt.files) {
-                        if (f.type.startsWith('image/')) { file = f; break; }
-                    }
-                } else if (dt.items?.length > 0) {
-                    for (const item of dt.items) {
-                        if (item.type.startsWith('image/')) { file = item.getAsFile(); break; }
-                    }
-                }
-                if (file) readImageFile(file);
             };
             const removeImage = (idx) => {
                 pushHistory();
@@ -2190,7 +2347,7 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
                 };
                 const slidesHTML = slides.value.map((s, idx) => renderSlideHTML(s, idx, font, ctx)).join('');
                 const totalSlides = slides.value.length;
-                const finalHTML = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n<meta charset="utf-8">\n<title>' + esc(slides.value[0]?.title || 'Presentation') + '</title>\n<style>\n@import url(\'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap\');\n@import url(\'https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap\');\n@import url(\'https://fonts.googleapis.com/css2?family=BIZ+UDGothic:wght@400;700&display=swap\');\n* { margin:0; padding:0; box-sizing:border-box; }\nbody { background:#0f172a; font-family:' + font + '; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; overflow:hidden; }\n.slides-viewport { overflow:hidden; width:1280px; max-width:95vw; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.4); }\n.slides-track { display:flex; transition:transform 0.35s ease; transform-origin:center center; }\n.slide-container { display:flex; flex-direction:column; flex-shrink:0; width:1280px; height:720px; margin:0 !important; transition:opacity 0.3s ease; }\n.nav-bar { display:flex; align-items:center; gap:16px; margin-top:24px; background:rgba(15,23,42,0.7); padding:8px 20px; border-radius:28px; backdrop-filter:blur(4px); }\n.nav-btn { width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.12); color:#fff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s; }\n.nav-btn:hover { background:rgba(255,255,255,0.25); }\n.nav-btn:disabled { opacity:0.3; cursor:default; }\n.page-indicator { color:rgba(255,255,255,0.6); font-size:14px; font-family:sans-serif; min-width:60px; text-align:center; }\n.fs-btn { position:fixed; top:16px; right:16px; z-index:10001; width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,0.3); background:rgba(15,23,42,0.6); color:#fff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); transition:background 0.2s; font-family:sans-serif; }\n.fs-btn:hover { background:rgba(255,255,255,0.15); }body.ui-hidden .nav-bar, body.ui-hidden .fs-btn { opacity:0; pointer-events:none; transition:opacity 0.3s; }body.is-fullscreen { background:#000; }\nbody.is-fullscreen .slides-viewport { position:fixed; inset:0; width:auto; max-width:none; border-radius:0; box-shadow:none; z-index:9999; overflow:hidden; background:#000; }\nbody.is-fullscreen .nav-bar { position:fixed; bottom:32px; left:50%; transform:translateX(-50%); z-index:10000; }\n@media print { body { background:transparent; } .slides-viewport { box-shadow:none; border-radius:0; } .nav-bar { display:none; } .slide-container { box-shadow:none !important; } } @media (max-width:768px){body{overflow-y:auto;padding:8px 0}.slides-viewport{max-width:100vw;width:100%;border-radius:0}.nav-bar{margin-top:8px;gap:8px}.nav-btn{width:32px;height:32px;font-size:14px}.fs-btn{display:none}}\n</style>\n</head>\n<body>\n<div class="slides-viewport"><div class="slides-track">' + slidesHTML + '</div></div>\n<div class="nav-bar">\n<button class="nav-btn" id="prevBtn" onclick="goToSlide(currentSlide-1)" disabled>\u25C0</button>\n<span class="page-indicator" id="pageNum">1 / ' + totalSlides + '</span>\n<button class="nav-btn" id="nextBtn" onclick="goToSlide(currentSlide+1)">\u25B6</button>\n</div>\n<button class="fs-btn" id="fsBtn" onclick="toggleFullscreen()" title="全画面">\u26F6</button>\n<script>\nvar currentSlide=0,totalSlides=' + totalSlides + ',track=document.querySelector(\'.slides-track\'),prevBtn=document.getElementById(\'prevBtn\'),nextBtn=document.getElementById(\'nextBtn\'),pageNum=document.getElementById(\'pageNum\');\nfunction updateTransform(){if(window.innerWidth<1280){var sf=window.innerWidth/1280,tx=(window.innerWidth-1280*sf)/2-currentSlide*1280*sf;track.style.transformOrigin=\'0 0\';track.style.transform=\'translateX(\'+tx+\'px) scale(\'+sf+\')\';}else{track.style.transformOrigin=\'center center\';track.style.transform=\'translateX(\'+(-currentSlide*1280)+\'px)\';}}\nfunction goToSlide(n){if(n<0)n=0;if(n>=totalSlides)n=totalSlides-1;currentSlide=n;if(document.body.classList.contains(\'is-fullscreen\')){var sf=Math.min(window.innerWidth/1280,window.innerHeight/720);var tx=(window.innerWidth-1280*sf)/2-currentSlide*1280*sf;var ty=(window.innerHeight-720*sf)/2;track.style.transformOrigin=\'0 0\';track.style.transform=\'translate(\'+tx+\'px,\'+ty+\'px) scale(\'+sf+\')\';}else{updateTransform();}prevBtn.disabled=n===0;nextBtn.disabled=n===totalSlides-1;pageNum.textContent=(n+1)+\' / \'+totalSlides;}\nfunction toggleFullscreen(){if(!document.fullscreenElement){document.documentElement.requestFullscreen();}else{document.exitFullscreen();}}\nwindow.addEventListener(\'resize\',function(){if(document.body.classList.contains(\'is-fullscreen\')){goToSlide(currentSlide);}else{updateTransform();}});\ndocument.addEventListener(\'fullscreenchange\',function(){var btn=document.getElementById(\'fsBtn\');if(document.fullscreenElement){document.body.classList.add(\'is-fullscreen\');goToSlide(currentSlide);if(btn)btn.title=\'\u5168\u753B\u9762\u3092\u7D42\u4E86\';}else{document.body.classList.remove(\'is-fullscreen\');var slides=document.querySelectorAll(\'.slide-container\');slides.forEach(function(el,i){el.style.display=\'\';el.style.opacity=\'\';el.style.pointerEvents=\'\';el.style.position=\'\';el.style.left=\'\';el.style.top=\'\';el.style.transform=\'\';el.style.transformOrigin=\'\';el.style.zIndex=\'\';});track.style.transform=\'\';track.style.transformOrigin=\'\';updateTransform();if(btn)btn.title=\'\u5168\u753B\u9762\';}});\ndocument.addEventListener(\'keydown\',function(e){if(e.key===\'ArrowLeft\')goToSlide(currentSlide-1);if(e.key===\'ArrowRight\')goToSlide(currentSlide+1);});var sx=0;document.addEventListener(\'touchstart\',function(e){sx=e.touches[0].clientX;},{passive:true});document.addEventListener(\'touchend\',function(e){var dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>50){if(dx<0)goToSlide(currentSlide+1);else goToSlide(currentSlide-1);}});var hideTimer;function showUI(){document.body.classList.remove(\'ui-hidden\');clearTimeout(hideTimer);hideTimer=setTimeout(function(){document.body.classList.add(\'ui-hidden\');},3000);}showUI();document.addEventListener(\'mousemove\',showUI);document.addEventListener(\'click\',showUI);document.addEventListener(\'touchstart\',showUI);document.addEventListener(\'wheel\',function(e){if(e.deltaY>0)goToSlide(currentSlide+1);else if(e.deltaY<0)goToSlide(currentSlide-1);},{passive:true});\n<\/script>\n</body>\n</html>';
+                const finalHTML = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n<meta charset="utf-8">\n<title>' + esc(slides.value[0]?.title || 'Presentation') + '</title>\n<style>\n@import url(\'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap\');\n@import url(\'https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap\');\n@import url(\'https://fonts.googleapis.com/css2?family=BIZ+UDGothic:wght@400;700&display=swap\');\n* { margin:0; padding:0; box-sizing:border-box; }\nbody { background:#0f172a; font-family:' + font + '; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; overflow:hidden; }\n.slides-viewport { overflow:hidden; width:1280px; max-width:95vw; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.4); }\n.slides-track { display:flex; transition:transform 0.35s ease; transform-origin:center center; }\n.slide-container { display:flex; flex-direction:column; flex-shrink:0; width:1280px; height:720px; margin:0 !important; transition:opacity 0.3s ease; }\n.nav-bar { display:flex; align-items:center; gap:16px; margin-top:24px; background:rgba(15,23,42,0.7); padding:8px 20px; border-radius:28px; backdrop-filter:blur(4px); }\n.nav-btn { width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.12); color:#fff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s; }\n.nav-btn:hover { background:rgba(255,255,255,0.25); }\n.nav-btn:disabled { opacity:0.3; cursor:default; }\n.page-indicator { color:rgba(255,255,255,0.6); font-size:14px; font-family:sans-serif; min-width:60px; text-align:center; }\n.fs-btn { position:fixed; top:16px; right:16px; z-index:10001; width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,0.3); background:rgba(15,23,42,0.6); color:#fff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); transition:background 0.2s; font-family:sans-serif; }\n.fs-btn:hover { background:rgba(255,255,255,0.15); }body.ui-hidden .nav-bar, body.ui-hidden .fs-btn { opacity:0; pointer-events:none; transition:opacity 0.3s; }body.is-fullscreen { background:#000; }\nbody.is-fullscreen .slides-viewport { position:fixed; inset:0; width:auto; max-width:none; border-radius:0; box-shadow:none; z-index:9999; overflow:hidden; background:#000; }\nbody.is-fullscreen .nav-bar { position:fixed; bottom:32px; left:50%; transform:translateX(-50%); z-index:10000; }\n@media print { body { background:transparent; } .slides-viewport { box-shadow:none; border-radius:0; } .nav-bar { display:none; } .slide-container { box-shadow:none !important; } } @media (max-width:768px){body{overflow-y:auto;padding:8px 0}.slides-viewport{max-width:100vw;width:100%;border-radius:0}.nav-bar{margin-top:8px;gap:8px}.nav-btn{width:32px;height:32px;font-size:14px}.fs-btn{display:none}}\n</style>\n</head>\n<body>\n<div class="slides-viewport"><div class="slides-track">' + slidesHTML + '</div></div>\n<div class="nav-bar">\n<button class="nav-btn" id="prevBtn" onclick="goToSlide(currentSlide-1)" disabled>\u25C0</button>\n<span class="page-indicator" id="pageNum">1 / ' + totalSlides + '</span>\n<button class="nav-btn" id="nextBtn" onclick="goToSlide(currentSlide+1)">\u25B6</button>\n</div>\n<button class="fs-btn" id="fsBtn" onclick="toggleFullscreen()" title="全画面">\u26F6</button>\n<script>\nvar currentSlide=0,totalSlides=' + totalSlides + ',track=document.querySelector(\'.slides-track\'),prevBtn=document.getElementById(\'prevBtn\'),nextBtn=document.getElementById(\'nextBtn\'),pageNum=document.getElementById(\'pageNum\');\nfunction updateTransform(){if(window.innerWidth<1280){var sf=window.innerWidth/1280,tx=(window.innerWidth-1280*sf)/2-currentSlide*1280*sf;track.style.transformOrigin=\'0 0\';track.style.transform=\'translateX(\'+tx+\'px) scale(\'+sf+\')\';}else{track.style.transformOrigin=\'center center\';track.style.transform=\'translateX(\'+(-currentSlide*1280)+\'px)\';}}\nfunction goToSlide(n){if(n<0)n=0;if(n>=totalSlides)n=totalSlides-1;currentSlide=n;if(document.body.classList.contains(\'is-fullscreen\')){var sf=Math.min(window.innerWidth/1280,window.innerHeight/720);var tx=(window.innerWidth-1280*sf)/2-currentSlide*1280*sf;var ty=(window.innerHeight-720*sf)/2;track.style.transformOrigin=\'0 0\';track.style.transform=\'translate(\'+tx+\'px,\'+ty+\'px) scale(\'+sf+\')\';}else{updateTransform();}prevBtn.disabled=n===0;nextBtn.disabled=n===totalSlides-1;pageNum.textContent=(n+1)+\' / \'+totalSlides;}\nfunction toggleFullscreen(){if(!document.fullscreenElement){document.documentElement.requestFullscreen();}else{document.exitFullscreen();}}\nwindow.addEventListener(\'resize\',function(){if(document.body.classList.contains(\'is-fullscreen\')){goToSlide(currentSlide);}else{updateTransform();}});\ndocument.addEventListener(\'fullscreenchange\',function(){var btn=document.getElementById(\'fsBtn\');if(document.fullscreenElement){document.body.classList.add(\'is-fullscreen\');goToSlide(currentSlide);if(btn)btn.title=\'\u5168\u753B\u9762\u3092\u7D42\u4E86\';}else{document.body.classList.remove(\'is-fullscreen\');var slides=document.querySelectorAll(\'.slide-container\');slides.forEach(function(el,i){el.style.display=\'\';el.style.opacity=\'\';el.style.pointerEvents=\'\';el.style.position=\'\';el.style.left=\'\';el.style.top=\'\';el.style.transform=\'\';el.style.transformOrigin=\'\';el.style.zIndex=\'\';});track.style.transform=\'\';track.style.transformOrigin=\'\';updateTransform();if(btn)btn.title=\'\u5168\u753B\u9762\';}});\ndocument.addEventListener(\'keydown\',function(e){if(e.key===\'ArrowLeft\')goToSlide(currentSlide-1);if(e.key===\'ArrowRight\')goToSlide(currentSlide+1);});var sx=0;document.addEventListener(\'touchstart\',function(e){sx=e.touches[0].clientX;},{passive:true});document.addEventListener(\'touchend\',function(e){var dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>50){if(dx<0)goToSlide(currentSlide+1);else goToSlide(currentSlide-1);}});var hideTimer;function showUI(){document.body.classList.remove(\'ui-hidden\');clearTimeout(hideTimer);hideTimer=setTimeout(function(){document.body.classList.add(\'ui-hidden\');},3000);}showUI();document.addEventListener(\'mousemove\',showUI);document.addEventListener(\'click\',showUI);document.addEventListener(\'touchstart\',showUI);document.addEventListener(\'keydown\',showUI);document.addEventListener(\'wheel\',function(e){if(e.deltaY>0)goToSlide(currentSlide+1);else if(e.deltaY<0)goToSlide(currentSlide-1);},{passive:true});\n<\/script>\n</body>\n</html>';
                 const blob = new Blob([finalHTML], { type: 'text/html;charset=utf-8;' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
@@ -2201,6 +2358,43 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
                 document.body.removeChild(link);
             };
 
+            const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+            const CHART_COLORS = ['#00b0ad','#002d5e','#e94560','#ff6b35','#4fc3f7','#8bc34a','#ffc107','#9c27b0','#e91e63','#00bcd4'];
+            const renderBarSVG = (items, maxVal) => {
+                const W=420, H=280, PL=44, PR=10, PT=14, PB=40;
+                const cw=W-PL-PR, ch=H-PT-PB, n=items.length, gap=8, bw=Math.min(52,(cw-gap*(n+1))/n);
+                const off=PL+(cw-(bw*n+gap*(n-1)))/2;
+                let rects='', labels='', vals='';
+                items.forEach((it,i)=>{
+                    const bh=Math.max(2,(it.value/maxVal)*ch), x=off+i*(bw+gap), y=PT+ch-bh;
+                    rects+=`<rect x="${x}" y="${y}" width="${bw}" height="${bh}" fill="${CHART_COLORS[i%CHART_COLORS.length]}" rx="2"/>`;
+                    labels+=`<text x="${x+bw/2}" y="${H-PB+16}" text-anchor="middle" font-size="11" fill="#334155" font-family="sans-serif">${esc(it.label)}</text>`;
+                    vals+=`<text x="${x+bw/2}" y="${y-6}" text-anchor="middle" font-size="10" fill="#64748b" font-family="sans-serif">${it.value}</text>`;
+                });
+                return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}"><line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" stroke="#cbd5e1"/><line x1="${PL-4}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" stroke="#cbd5e1"/>${rects}${vals}${labels}</svg>`;
+            };
+            const renderHBarSVG = (items, maxVal) => {
+                const W=420, H=280, PL=80, PR=14, PT=10, PB=40;
+                const cw=W-PL-PR, ch=H-PT-PB, n=items.length, gap=8, bh=Math.min(32,(ch-gap*(n+1))/n);
+                const off=PT+(ch-(bh*n+gap*(n-1)))/2;
+                let rects='', labels='', vals='';
+                items.forEach((it,i)=>{
+                    const bw=Math.max(2,(it.value/maxVal)*cw), x=PL, y=off+i*(bh+gap);
+                    rects+=`<rect x="${x}" y="${y}" width="${bw}" height="${bh}" fill="${CHART_COLORS[i%CHART_COLORS.length]}" rx="2"/>`;
+                    labels+=`<text x="${PL-8}" y="${y+bh/2+4}" text-anchor="end" font-size="11" fill="#334155" font-family="sans-serif">${esc(it.label)}</text>`;
+                    vals+=`<text x="${x+bw+6}" y="${y+bh/2+4}" font-size="10" fill="#64748b" font-family="sans-serif">${it.value}</text>`;
+                });
+                return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}"><line x1="${PL-4}" y1="${PT}" x2="${PL-4}" y2="${H-PB}" stroke="#cbd5e1"/><line x1="${PL-4}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" stroke="#cbd5e1"/>${rects}${vals}${labels}</svg>`;
+            };
+            const renderChart = (s) => {
+                if (!s || !s.chartItems || s.chartItems.length === 0) return '';
+                const items = s.chartItems.filter(ci => ci.label || ci.value > 0);
+                if (items.length === 0) return '';
+                const maxVal = Math.max(...items.map(ci => Math.max(0, ci.value || 0)), 1);
+                const layout = s.layout || 'bar';
+                if (layout === 'hbar') return renderHBarSVG(items, maxVal);
+                return renderBarSVG(items, maxVal);
+            };
             const renderSlideHTML = (s, idx, font, ctx) => {
                 const MAIN = ctx ? ctx.main : '#002d5e';
                 const ACCENT = ctx ? ctx.accent : '#00b0ad';
@@ -2240,10 +2434,10 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
                     return '<div class="slide-container" style="' + baseStyle + ' padding:60px 80px; display:flex; flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:' + MAIN + ';border-left:10px solid ' + ACCENT + ';padding-left:20px;margin:0 0 30px 0;">' + esc(s.title || 'タイトル') + '</h2><div style="flex-grow:1;"><table style="width:100%;border-collapse:collapse;"><thead><tr>' + headers + '</tr></thead><tbody>' + rows + '</tbody></table></div>' + imagesHTML + logoHTML + ftr + '</div>';
                 }
                 if (s.layout === 'numbered-list') {
-                    const items = s.items.filter(x=>x.trim()).map((item,i) => '<div style="font-size:28px;margin-bottom:18px;display:flex;align-items:center;color:#334155;"><span style="color:'+ACCENT+';font-weight:bold;margin-right:40px;font-size:56px;width:60px;text-align:center;line-height:1;font-variant-numeric:tabular-nums;font-family:\'BIZ UDゴシック\',\'Courier New\',monospace;">0'+(i+1)+'</span>'+esc(item)+'</div>').join('');
-                    return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:'+MAIN+';border-left:10px solid '+ACCENT+';padding-left:20px;margin:0 0 30px 0;">'+esc(s.title||'タイトル')+'</h2><div style="flex-grow:1;display:flex;flex-direction:column;justify-content:center;">'+items+'</div>'+imagesHTML+logoHTML+ftr+'</div>';
+                    const items = s.items.filter(x=>x.trim()).map((item,i) => '<div style="font-size:28px;margin-bottom:18px;display:flex;align-items:center;color:#334155;"><span style="color:'+ACCENT+';font-weight:bold;margin-right:40px;font-size:48px;width:80px;text-align:center;line-height:1;font-variant-numeric:tabular-nums;font-family:\'BIZ UDゴシック\',\'Courier New\',monospace;">0'+(i+1)+'</span>'+esc(item)+'</div>').join('');
+                    return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:'+MAIN+';border-left:10px solid '+ACCENT+';padding-left:20px;margin:0 0 30px 0;">'+esc(s.title||'タイトル')+'</h2><div style="flex-grow:1;display:flex;flex-direction:column;">'+items+'</div>'+imagesHTML+logoHTML+ftr+'</div>';
                 }
-                if (s.layout === 'centered') {
+                if (s.layout === 'timeline') {
                     return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;"><div style="font-size:48px;color:'+MAIN+';font-weight:700;line-height:1.4;max-width:900px;">'+esc(s.body||'テキストを入力')+'</div><div style="font-size:24px;color:#64748b;margin-top:24px;">'+esc(s.subtitle||'')+'</div>'+imagesHTML+logoHTML+ftr+'</div>';
                 }
                 if (s.layout === 'closing') {
@@ -2251,8 +2445,29 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
                     return '<div class="slide-container" style="'+baseStyle+' background:linear-gradient(135deg,'+MAIN+' 0%,#1a1a2e 100%);color:white;padding:60px 80px;border-radius:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;"><div style="font-size:64px;font-weight:700;margin-bottom:16px;">'+esc(s.body||'ありがとうございました')+'</div><div style="font-size:28px;opacity:0.85;margin-bottom:32px;">'+esc(s.subtitle||'')+'</div>'+contacts+imagesHTML+logoHTMLLight+'<div style="position:absolute;bottom:24px;left:24px;right:24px;display:grid;grid-template-columns:1fr auto 1fr;font-size:14px;color:rgba(255,255,255,0.75);"><div style="text-align:left;">'+esc(fText(F.left))+'</div><div style="text-align:center;">'+esc(fText(F.center))+'</div><div style="text-align:right;display:flex;align-items:center;gap:12px;justify-content:flex-end;"><span style="font-size:12pt;color:rgba(255,255,255,0.55);font-weight:700;">'+CREDIT_TEXT+'</span>'+esc(fText(F.right))+'</div></div></div>';
                 }
                 if (s.layout === 'agenda') {
-                    const entries = (s.agEntries||[]).filter(e=>e.t||e.tp).map(e => '<div style="display:flex;gap:16px;align-items:center;padding:8px 0;border-bottom:1px solid #e2e8f0;"><div style="font-size:20px;font-weight:700;color:'+ACCENT+';min-width:80px;">'+esc(e.t||'')+'</div><div style="font-size:22px;color:#334155;">'+esc(e.tp||'')+'</div></div>').join('');
-                    return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:'+MAIN+';border-left:10px solid '+ACCENT+';padding-left:20px;margin:0 0 30px 0;">'+esc(s.title||'アジェンダ')+'</h2><div style="flex-grow:1;display:flex;flex-direction:column;justify-content:center;">'+entries+'</div>'+imagesHTML+logoHTML+ftr+'</div>';
+                    const entries = (s.agEntries||[]).filter(e=>e.t||e.tp).map(e => '<div style="display:flex;gap:16px;align-items:center;padding:8px 0;border-bottom:1px solid #e2e8f0;"><div style="font-size:24px;font-weight:700;color:'+ACCENT+';min-width:100px;">'+esc(e.t||'')+'</div><div style="font-size:26px;color:#334155;">'+esc(e.tp||'')+'</div></div>').join('');
+                    return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:'+MAIN+';border-left:10px solid '+ACCENT+';padding-left:20px;margin:0 0 30px 0;">'+esc(s.title||'アジェンダ')+'</h2><div style="flex-grow:1;display:flex;flex-direction:column;">'+entries+'</div>'+imagesHTML+logoHTML+ftr+'</div>';
+                }
+                if (s.layout === 'comparison') {
+                    const lf = (s.leftFeatures||[]).filter(x=>x.trim()).map(x=>'<div style="font-size:20px;margin-bottom:10px;padding-left:20px;position:relative;"><span style="position:absolute;left:0;color:#94a3b8;">▸</span>'+esc(x)+'</div>').join('');
+                    const rf = (s.rightFeatures||[]).filter(x=>x.trim()).map(x=>'<div style="font-size:20px;margin-bottom:10px;padding-left:20px;position:relative;"><span style="position:absolute;left:0;color:#94a3b8;">▸</span>'+esc(x)+'</div>').join('');
+                    return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:'+MAIN+';border-left:10px solid '+ACCENT+';padding-left:20px;margin:0 0 30px 0;">'+esc(s.title||'比較')+'</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;flex-grow:1;"><div style="background:#f0fdf4;border:2px solid #86efac;border-radius:8px;padding:24px;"><h3 style="font-size:28px;font-weight:700;text-align:center;color:#16a34a;margin:0 0 16px 0;">'+esc(s.leftLabel||'A')+'</h3>'+lf+'</div><div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:8px;padding:24px;"><h3 style="font-size:28px;font-weight:700;text-align:center;color:#dc2626;margin:0 0 16px 0;">'+esc(s.rightLabel||'B')+'</h3>'+rf+'</div></div>'+imagesHTML+logoHTML+ftr+'</div>';
+                }
+                if (s.layout === 'stats') {
+                    const stats = (s.statItems||[]).filter(st=>st.n||st.l).map(st => '<div style="background:#f8fafc;border-radius:8px;padding:20px;text-align:center;display:flex;flex-direction:column;justify-content:center;"><div style="font-size:48px;font-weight:700;color:'+ACCENT+';line-height:1.1;">'+esc(st.n||'0')+'</div><div style="font-size:18px;color:#64748b;margin-top:8px;">'+esc(st.l||'')+'</div></div>').join('');
+                    return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:'+MAIN+';border-left:10px solid '+ACCENT+';padding-left:20px;margin:0 0 30px 0;">'+esc(s.title||'統計')+'</h2><div style="flex-grow:1;display:grid;grid-template-columns:1fr 1fr;gap:16px;">'+stats+'</div>'+imagesHTML+logoHTML+ftr+'</div>';
+                }
+                if (s.layout === 'bar') {
+                    const chartSVG = renderChart(s);
+                    const insights = (s.insights||[]).filter(x=>x.trim()).map(x => '<div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:14px;"><div style="width:10px;height:10px;background:'+ACCENT+';border-radius:50%;margin-top:8px;flex-shrink:0;"></div><div style="font-size:18px;color:#334155;line-height:1.5;">'+esc(x)+'</div></div>').join('');
+                    return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:'+MAIN+';border-left:10px solid '+ACCENT+';padding-left:20px;margin:0 0 30px 0;">'+esc(s.title||'グラフ')+'</h2><div style="flex-grow:1;display:flex;gap:32px;"><div style="flex:3;display:flex;align-items:center;justify-content:center;">'+chartSVG+'</div><div style="flex:2;display:flex;flex-direction:column;justify-content:center;">'+insights+'</div></div>'+imagesHTML+logoHTML+ftr+'</div>';
+                }
+                if (s.layout === 'process') {
+                    const steps = (s.processSteps||[]).filter(st=>st.label||st.desc).map((st,i) => {
+                        const arrow = i > 0 ? '<div style="font-size:28px;color:'+ACCENT+';flex-shrink:0;margin:0 4px;margin-top:-26px;">→</div>' : '';
+                        return arrow + '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;flex:1;padding:0 8px;"><div style="width:52px;height:52px;background:'+ACCENT+';color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;margin-bottom:10px;">'+(i+1)+'</div><div style="font-size:20px;font-weight:700;color:'+MAIN+';margin-bottom:4px;">'+esc(st.label||'')+'</div><div style="font-size:14px;color:#64748b;">'+esc(st.desc||'')+'</div></div>';
+                    }).join('');
+                    return '<div class="slide-container" style="'+baseStyle+' padding:60px 80px;display:flex;flex-direction:column;"><h2 style="font-size:42px;font-weight:bold;color:'+MAIN+';border-left:10px solid '+ACCENT+';padding-left:20px;margin:0 0 30px 0;">'+esc(s.title||'プロセス')+'</h2><div style="flex-grow:1;display:flex;align-items:center;justify-content:center;padding:20px 0;">'+steps+'</div>'+imagesHTML+logoHTML+ftr+'</div>';
                 }
                 return '<div class="slide-container" style="' + baseStyle + ' padding:60px 80px; display:flex; flex-direction:column;"><h2 style="font-size:42px; font-weight:bold; color:' + MAIN + '; border-left:10px solid ' + ACCENT + '; padding-left:20px; margin:0 0 30px 0;">' + esc(s.title || '') + '</h2><div style="flex-grow:1; display:flex; flex-direction:column; justify-content:center;"></div>' + imagesHTML + logoHTML + ftr + '</div>';
             };
@@ -2264,8 +2479,6 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
                 });
                 return '<div class="thumb-scale">' + html + '</div>';
             };
-
-            const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 
             // ===== PPTX Export =====
             const exportPPTX = () => {
@@ -2340,8 +2553,8 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
                         slide.addText(s.title || 'タイトル', { x: 0.6, y: 0.6, w: 12, h: 0.8, fontSize: 32, color: MAIN, bold: true, fontFace });
                         slide.addShape(pptx.ShapeType.rect, { x: 0.4, y: 0.6, w: 0.08, h: 0.8, fill: { color: ACCENT } });
                         (s.items||[]).filter(x=>x.trim()).forEach((item, i) => {
-                            slide.addText('0'+(i+1), { x: 0.6, y: 1.7 + i*0.8, w: 0.6, fontSize: 36, color: ACCENT, bold: true, fontFace: 'Arial' });
-                            slide.addText(item, { x: 1.6, y: 1.8 + i*0.8, w: 10.5, fontSize: 20, color: '334155', fontFace });
+                            slide.addText('0'+(i+1), { x: 0.6, y: 1.65 + i*0.8, w: 1.0, h: 0.7, fontSize: 36, color: ACCENT, bold: true, align: 'center', valign: 'middle', shrinkText: true, fontFace: 'Arial' });
+                            slide.addText(item, { x: 1.9, y: 1.65 + i*0.8, w: 10.3, h: 0.7, fontSize: 20, color: '334155', valign: 'middle', fontFace });
                         });
                         addImages(slide, s.images);
                         addFooter(slide, idx, false);
@@ -2365,8 +2578,65 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
                         slide.addText(s.title || 'アジェンダ', { x: 0.6, y: 0.4, w: 12, h: 0.8, fontSize: 30, color: MAIN, bold: true, fontFace });
                         slide.addShape(pptx.ShapeType.rect, { x: 0.4, y: 0.4, w: 0.08, h: 0.8, fill: { color: ACCENT } });
                         (s.agEntries||[]).filter(e=>e.t||e.tp).forEach((e, i) => {
-                            slide.addText(e.t||'', { x: 0.6, y: 1.8 + i*1.0, w: 1.8, h: 0.5, fontSize: 16, color: ACCENT, bold: true, fontFace });
-                            slide.addText(e.tp||'', { x: 2.6, y: 1.8 + i*1.0, w: 9.5, h: 0.5, fontSize: 18, color: '334155', fontFace });
+                            slide.addText(e.t||'', { x: 1.0, y: 1.8 + i*1.0, w: 1.8, h: 0.65, fontSize: 22, color: ACCENT, bold: true, fontFace });
+                            slide.addText(e.tp||'', { x: 3.0, y: 1.8 + i*1.0, w: 9.1, h: 0.65, fontSize: 24, color: '334155', fontFace });
+                        });
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, false);
+                    } else if (s.layout === 'comparison') {
+                        slide.addText(s.title || '比較', { x: 0.6, y: 0.4, w: 12, h: 0.8, fontSize: 30, color: MAIN, bold: true, fontFace });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.4, y: 0.4, w: 0.08, h: 0.8, fill: { color: ACCENT } });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.5, y: 1.5, w: 5.8, h: 5.5, fill: { color: 'f0fdf4' }, line: { color: '86efac', pt: 2 } });
+                        slide.addText(s.leftLabel || 'A', { x: 0.7, y: 1.7, w: 5.4, h: 0.6, fontSize: 22, bold: true, color: '16a34a', align: 'center', fontFace });
+                        (s.leftFeatures||[]).filter(x=>x.trim()).forEach((it,i)=> slide.addText('▸ '+it, { x: 0.8, y: 2.5 + i*0.55, w: 5.3, h: 0.45, fontSize: 16, color: '334155', fontFace }));
+                        slide.addShape(pptx.ShapeType.rect, { x: 6.8, y: 1.5, w: 5.8, h: 5.5, fill: { color: 'fef2f2' }, line: { color: 'fca5a5', pt: 2 } });
+                        slide.addText(s.rightLabel || 'B', { x: 7.0, y: 1.7, w: 5.4, h: 0.6, fontSize: 22, bold: true, color: 'dc2626', align: 'center', fontFace });
+                        (s.rightFeatures||[]).filter(x=>x.trim()).forEach((it,i)=> slide.addText('▸ '+it, { x: 7.1, y: 2.5 + i*0.55, w: 5.3, h: 0.45, fontSize: 16, color: '334155', fontFace }));
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, false);
+                    } else if (s.layout === 'stats') {
+                        slide.addText(s.title || '統計', { x: 0.6, y: 0.4, w: 12, h: 0.8, fontSize: 30, color: MAIN, bold: true, fontFace });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.4, y: 0.4, w: 0.08, h: 0.8, fill: { color: ACCENT } });
+                        (s.statItems||[]).filter(st=>st.n||st.l).forEach((st, i) => {
+                            const col = i % 2, row = Math.floor(i / 2);
+                            const xPos = 0.5 + col*6.2, yPos = 1.5 + row*2.8;
+                            slide.addShape(pptx.ShapeType.rect, { x: xPos, y: yPos, w: 5.8, h: 2.5, fill: { color: 'f8fafc' }, line: { color: 'f8fafc' } });
+                            slide.addText(st.n||'0', { x: xPos, y: yPos+0.5, w: 5.8, h: 1.0, fontSize: 40, bold: true, color: ACCENT, align: 'center', fontFace });
+                            slide.addText(st.l||'', { x: xPos, y: yPos+1.5, w: 5.8, h: 0.6, fontSize: 16, color: '64748b', align: 'center', fontFace });
+                        });
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, false);
+                    } else if (s.layout === 'bar') {
+                        slide.addText(s.title || 'グラフ', { x: 0.6, y: 0.4, w: 12, h: 0.8, fontSize: 30, color: MAIN, bold: true, fontFace });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.4, y: 0.4, w: 0.08, h: 0.8, fill: { color: ACCENT } });
+                        const chartItems = (s.chartItems||[]).filter(ci => ci.label || ci.value > 0);
+                        if (chartItems.length > 0) {
+                            slide.addChart(pptx.charts.BAR, [{
+                                name: s.title || 'データ',
+                                labels: chartItems.map(ci => ci.label),
+                                values: chartItems.map(ci => Math.max(0, ci.value || 0)),
+                            }], { x: 0.5, y: 1.3, w: 8.5, h: 5.5, showTitle: false, chartColors: CHART_COLORS.map(c=>c.replace('#','')), barDir: 'col', catAxisLabelFontSize: 10, valAxisLabelFontSize: 9 });
+                            (s.insights||[]).filter(x=>x.trim()).forEach((it, i) => slide.addText('● ' + it, { x: 9.3, y: 1.8 + i*0.7, w: 3.7, h: 0.55, fontSize: 13, color: '334155', fontFace, valign: 'top' }));
+                        } else {
+                            slide.addText('データがありません', { x: 0.5, y: 3.0, w: 8.5, h: 1.0, fontSize: 16, color: '94a3b8', align: 'center', fontFace });
+                        }
+                        addImages(slide, s.images);
+                        addFooter(slide, idx, false);
+                    } else if (s.layout === 'process') {
+                        slide.addText(s.title || 'プロセス', { x: 0.6, y: 0.4, w: 12, h: 0.8, fontSize: 30, color: MAIN, bold: true, fontFace });
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.4, y: 0.4, w: 0.08, h: 0.8, fill: { color: ACCENT } });
+                        const cy = 3.3;
+                        const steps = (s.processSteps||[]).filter(st=>st.label||st.desc);
+                        const totalW = 12.5, stepW = totalW / Math.max(steps.length, 2);
+                        steps.forEach((st, i) => {
+                            const cx = 0.3 + i * stepW + stepW / 2;
+                            slide.addShape(pptx.ShapeType.ellipse, { x: cx-0.3, y: cy, w: 0.6, h: 0.6, fill: { color: ACCENT } });
+                            slide.addText((i+1).toString(), { x: cx-0.3, y: cy, w: 0.6, h: 0.6, fontSize: 18, color: 'FFFFFF', bold: true, align: 'center', valign: 'middle', fontFace });
+                            slide.addText(st.label||'', { x: cx-1.2, y: cy+0.8, w: 2.4, h: 0.45, fontSize: 16, bold: true, color: MAIN, align: 'center', fontFace });
+                            slide.addText(st.desc||'', { x: cx-1.2, y: cy+1.3, w: 2.4, h: 0.4, fontSize: 12, color: '64748b', align: 'center', fontFace });
+                            if (i < steps.length - 1) {
+                                slide.addShape(pptx.ShapeType.rect, { x: cx+0.3, y: cy+0.25, w: stepW-0.6, h: 0.06, fill: { color: ACCENT }, line: { color: ACCENT } });
+                            }
                         });
                         addImages(slide, s.images);
                         addFooter(slide, idx, false);
@@ -2456,20 +2726,12 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
                     }
                 });
 
-                // Paste image from clipboard
-                document.addEventListener('paste', onDocumentPaste);
-                document.addEventListener('dragover', onDocumentDragOver);
-                document.addEventListener('drop', onDocumentDrop);
-
                 // Dropdown outside click
                 document.addEventListener('click', closeDropdowns);
 
                 nextTick(updateScale);
             });
             onUnmounted(() => {
-                document.removeEventListener('paste', onDocumentPaste);
-                document.removeEventListener('dragover', onDocumentDragOver);
-                document.removeEventListener('drop', onDocumentDrop);
                 document.removeEventListener('click', closeDropdowns);
                 document.removeEventListener('touchstart', onSwipeStart);
                 document.removeEventListener('touchend', onSwipeEnd);
@@ -2525,6 +2787,7 @@ cover（表紙）→ agenda（アジェンダ）→ section（セクション見
                 uiThemes, currentUiTheme, settingsOpen,
                 overallPreviewOpen, renderSlideThumb,
                 exportDropdownOpen, closeDropdowns, exportRef,
+                renderChart,
                 // AIでつくる
                 aiModalOpen, aiJSONInput, aiPromptText,
                 copyAIPrompt, formatAIJSON, applyAIDeck, buildAIPrompt,
