@@ -1347,7 +1347,7 @@
         setup() {
             const today = new Date();
             const _pad = (n) => String(n).padStart(2, '0');
-            const defaultDate = today.getFullYear() + '/' + (today.getMonth()+1) + '/' + _pad(today.getDate());
+            const defaultDate = today.getFullYear() + '/' + (today.getMonth()+1) + '/' + today.getDate();
             const globalMainColor = ref('#002d5e');
             const globalAccentColor = ref('#00b0ad');
 
