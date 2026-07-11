@@ -236,20 +236,20 @@
         @media (min-width: 769px) {
             .mobile-only { display: none !important; }
         }
+        .btn-text { display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .header-compact .btn-text { display: none !important; }
         @media (max-width: 1100px) and (min-width: 769px) {
             header {
-                flex-wrap: wrap;
-                height: auto;
+                flex-wrap: nowrap;
+                overflow: hidden;
                 padding: 6px 10px !important;
                 gap: 2px;
             }
             header h1 { font-size: 0.95rem; }
             .header-tools {
-                width: 100%;
-                display: grid;
-                grid-template-columns: auto auto;
-                justify-content: center;
-                gap: 4px 8px;
+                display: flex;
+                flex-wrap: nowrap;
+                gap: 4px 6px;
             }
             .header-tools > * { font-size: 11px; }
             .header-wrap { padding: 2px 6px !important; }
@@ -343,24 +343,24 @@
             <!-- デッキ切替 -->
             <div class="flex gap-1 desktop-only">
                 <button @click="loadSampleDeck" class="flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" :title="t('sample_deck')">
-                    <i data-lucide="book-open" class="w-3.5 h-3.5"></i> {{ t('sample_deck') }}
+                    <i data-lucide="book-open" class="w-3.5 h-3.5"></i> <span class="btn-text">{{ t('sample_deck') }}</span>
                 </button>
                 <button @click="loadEmptyDeck" class="flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" :title="t('new_deck')">
-                    <i data-lucide="file-plus" class="w-3.5 h-3.5"></i> {{ t('new_deck') }}
+                    <i data-lucide="file-plus" class="w-3.5 h-3.5"></i> <span class="btn-text">{{ t('new_deck') }}</span>
                 </button>
             </div>
             <!-- フォント -->
             <div class="flex items-center gap-2 header-wrap px-3 py-1.5 rounded-lg desktop-only">
-                <i data-lucide="type" class="w-4 h-4 header-icon"></i>
-                <label class="text-xs header-label">{{ t('font') }}</label>
+                <i data-lucide="type" class="w-4 h-4 header-icon btn-text"></i>
+                <label class="text-xs header-label btn-text">{{ t('font') }}</label>
                 <select v-model="globalFont" class="header-input text-sm rounded px-2 py-1 outline-none">
                     <option v-for="f in fontOptions" :key="f.value" :value="f.value">{{ f.label() }}</option>
                 </select>
             </div>
             <!-- カラーテーマ -->
             <div class="flex items-center gap-1 header-wrap px-2 py-1.5 rounded-lg desktop-only">
-                <i data-lucide="swatch-book" class="w-3.5 h-3.5 header-icon shrink-0"></i>
-                <label class="text-xs header-label shrink-0">{{ t('color_theme') }}</label>
+                <i data-lucide="swatch-book" class="w-3.5 h-3.5 header-icon shrink-0 btn-text"></i>
+                <label class="text-xs header-label shrink-0 btn-text">{{ t('color_theme') }}</label>
                 <select v-model="currentColorTheme" @change="onColorThemeChange"
                     class="header-input text-xs rounded px-1.5 py-1 outline-none max-w-[110px]">
                     <option v-for="(th, i) in colorThemes" :key="i" :value="i">{{ th.name() }}</option>
@@ -368,25 +368,25 @@
             </div>
             <!-- AIでつくる -->
             <button data-tutorial="ai" @click="aiModalOpen = !aiModalOpen" class="flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" :title="t('ai_create')" style="background:rgba(0,176,173,0.15);">
-                <i data-lucide="sparkles" class="w-3.5 h-3.5" style="color:#00b0ad;"></i> {{ t('ai_create') }}
+                <i data-lucide="sparkles" class="w-3.5 h-3.5" style="color:#00b0ad;"></i> <span class="btn-text">{{ t('ai_create') }}</span>
             </button>
             <!-- 使い方ガイド -->
             <button @click="showWelcome" class="desktop-only flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" :title="t('tutorial_guide')">
-                <i data-lucide="help-circle" class="w-3.5 h-3.5 ui-accent-icon"></i> {{ t('tutorial_guide') }}
+                <i data-lucide="help-circle" class="w-3.5 h-3.5 ui-accent-icon"></i> <span class="btn-text">{{ t('tutorial_guide') }}</span>
             </button>
             <!-- 配置方向 -->
             <button @click="toggleOrientation" class="desktop-only flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" :title="layoutOrientation === 'horizontal' ? t('vertical') : t('horizontal')">
                 <i :data-lucide="layoutOrientation === 'horizontal' ? 'rows-2' : 'columns-2'" class="w-3.5 h-3.5 ui-accent-icon"></i>
-                <span class="hidden sm:inline">{{ layoutOrientation === 'horizontal' ? t('vertical') : t('horizontal') }}</span>
+                <span class="hidden sm:inline btn-text">{{ layoutOrientation === 'horizontal' ? t('vertical') : t('horizontal') }}</span>
             </button>
             <!-- 設定 -->
             <button @click="settingsOpen = !settingsOpen" class="desktop-only flex items-center gap-1 header-btn px-2 py-1.5 rounded-lg text-xs transition" :title="t('settings')">
-                <i data-lucide="settings" class="w-3.5 h-3.5 ui-accent-icon"></i> {{ t('settings') }}
+                <i data-lucide="settings" class="w-3.5 h-3.5 ui-accent-icon"></i> <span class="btn-text">{{ t('settings') }}</span>
             </button>
             <!-- 出力 -->
             <div :ref="el => exportRef = el" class="relative desktop-only">
                 <button data-tutorial="export" @click="exportDropdownOpen = !exportDropdownOpen" class="btn-accent flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition" :title="t('export_dropdown')">
-                    <i data-lucide="download" class="w-3.5 h-3.5"></i> {{ t('export') }}
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i> <span class="btn-text">{{ t('export') }}</span>
                 </button>
                 <div v-if="exportDropdownOpen" class="header-dd">
                     <button @click="exportPPTX(); exportDropdownOpen = false" class="header-dd-item" :title="t('export_pptx')">
@@ -3428,6 +3428,39 @@ ${t('ai_prompt_recommendation')}`;
 
                 const ro = new ResizeObserver(() => updateScale());
                 if (previewStage.value) ro.observe(previewStage.value);
+
+                // Header compact mode: always keep header in 1 row, switch to icon-only on overflow
+                {
+                    const hdr = document.querySelector('header.app-header');
+                    if (hdr) {
+                        let isCompact = false;
+                        let compactAtWidth = 0;
+                        const applyCompact = (on) => {
+                            isCompact = on;
+                            hdr.classList.toggle('header-compact', on);
+                        };
+                        const checkHeaderCompact = () => {
+                            if (!isCompact) {
+                                if (hdr.scrollWidth > hdr.clientWidth + 2) {
+                                    applyCompact(true);
+                                    compactAtWidth = window.innerWidth;
+                                }
+                            } else {
+                                if (window.innerWidth > compactAtWidth + 150) {
+                                    applyCompact(false);
+                                    void hdr.offsetHeight;
+                                    if (hdr.scrollWidth > hdr.clientWidth + 2) {
+                                        applyCompact(true);
+                                    } else {
+                                        compactAtWidth = 0;
+                                    }
+                                }
+                            }
+                        };
+                        window.addEventListener('resize', () => requestAnimationFrame(checkHeaderCompact));
+                        checkHeaderCompact();
+                    }
+                }
 
                 // Mouse events
                 window.addEventListener('resize', updateScale);
